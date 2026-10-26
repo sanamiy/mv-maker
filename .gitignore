@@ -3,3 +3,4 @@ out/
 assets/*.vrm
 *.mp4
 examples/demo/song.wav
+.venv/
