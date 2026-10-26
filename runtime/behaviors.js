@@ -64,6 +64,34 @@ export const behaviors = {
     if (em?.getExpression('blink')) em.setValue('blink', Math.max(em.getValue('blink') ?? 0, v * (1 - (m.expression.happy ?? 0) * 0.7)));
   },
 
+  // 拍ごとに左右へ体重を移す（腰が横に動き、反対の膝が曲がる）
+  stepSide(vrm, m, o) {
+    const side = m.beatIndex % 2 ? 1 : -1, k = Math.sin(Math.PI * m.beatPhase);
+    const amt = (o.amount ?? 0.05) * m.energy;
+    const hips = bone(vrm, 'hips');
+    if (hips) hips.position.x += side * amt * (0.5 + 0.5 * Math.cos(Math.PI * m.beatPhase));
+    add(hips, 0, 0, -side * amt * 1.2);
+    const lift = side > 0 ? 'left' : 'right';
+    add(bone(vrm, `${lift}UpperLeg`), -k * amt * 4, 0, 0);
+    add(bone(vrm, `${lift}LowerLeg`), k * amt * 7, 0, 0);
+  },
+
+  // 1小節かけて体ごと左右に向きを変える
+  turn(vrm, m, o) {
+    const a = Math.sin(Math.PI * m.barPos * (o.speed ?? 0.5)) * (o.amount ?? 0.35) * Math.min(1, m.energy);
+    add(bone(vrm, 'hips'), 0, a, 0);
+    add(bone(vrm, 'head'), 0, -a * 0.5, 0);
+  },
+
+  // 拍の頭で片腕ずつ突き上げる（サビ向け）
+  pump(vrm, m, o) {
+    const side = m.beatIndex % 2 ? 'left' : 'right', sign = side === 'left' ? 1 : -1;
+    const up = (o.amount ?? 1.2) * Math.min(1.5, m.energy) * (0.35 + 0.65 * m.beatPulse);
+    add(bone(vrm, `${side}UpperArm`), 0, 0, sign * up);
+    add(bone(vrm, `${side}LowerArm`), 0, -sign * up * 0.5, 0);
+    add(bone(vrm, 'chest'), -m.beatPulse * 0.06 * m.energy, 0, sign * 0.04 * m.energy);
+  },
+
   // 音量で口を開ける（歌っている風）
   mouth(vrm, m, o) {
     const em = vrm.expressionManager;

@@ -29,6 +29,8 @@ node src/analyze.mjs my-song.mp3 my/analysis.json
 node src/render.mjs my/scene.json out/my.mp4
 node src/render.mjs my/scene.json out/quick.mp4 --scale 0.5 --frames 300   # 半分の解像度で先頭10秒だけ
 node src/preview.mjs my/scene.json   # ブラウザで音付きプレビュー（実時間に追従するので本番より粗い）
+node src/stills.mjs my/scene.json out/sheet.png --every 4   # 4秒ごとの静止画の一覧（書き出し前の確認用）
+node src/render.mjs my/scene.json out/my.mp4 --gl metal     # Mac などで GPU を使う（既定の swiftshader より10倍ほど速い）
 ```
 
 ## 書き方
@@ -127,6 +129,22 @@ HTMLには「何を・いつ出すか」だけ、CSSには「どう見せるか�
 | `fade-out` | `data-end` の `--out-dur`（既定 0.3 秒）前から消える |
 | `beat-pulse` `beat-flash` `beat-sway` `beat-bob` | 拍に合わせて拡大 / 点滅 / 揺れ / 跳ねる（強さは `--amount`） |
 
+### カメラのショット・照明・床
+
+```jsonc
+"camera": { "position": [0, 1.3, 5], "target": [0, 1.15, 0], "fov": 30, "orbit": 0.35,
+  "shots": [                                   // at の時刻で切り替わる（書き方は data-start と同じ）
+    { "at": "chorus", "position": [0, 1.3, 5], "target": [0, 1.15, 0], "roll": -3 },
+    { "at": "bar 14", "position": [1, 0.45, 3.8], "target": [0, 1.45, 0],
+      "to": { "position": [0, 1.6, 3] }, "ease": "inOut" },   // 次のショットまで（または dur 秒で）to へ動く
+    { "at": "73.2", "position": [-0.6, 1.6, 4.2], "target": [-0.6, 1.4, 0], "to": { "roll": -14 }, "dur": 1, "ease": "out" }
+  ] },
+"light": { "color": "#ffffff", "intensity": 2.2, "ambient": 0.7, "rim": "#7fd8ff" },   // セクションに "light": "#ffc0c8" でキーライトの色を変えられる
+"floor": { "color": "#0d1020", "glow": "#ff2e4d", "radius": 1.5 }                      // false で床なし
+```
+
+モーションには `"only": ["chorus"]` / `"except": ["pre-chorus"]` を書くと、そのセクションだけ（以外だけ）で動きます。
+
 ### 用意してあるモーション
 
 | use | 内容 | 主なパラメータ |
@@ -138,6 +156,9 @@ HTMLには「何を・いつ出すか」だけ、CSSには「どう見せるか�
 | `armSwing` | 左右交互に腕を振る。energy が `liftFrom` を超えると腕が上がる | `amount`, `liftFrom`, `lift` |
 | `blink` | 決定的なまばたき | `interval` |
 | `mouth` | 音量で口を開ける | `amount` |
+| `stepSide` | 拍ごとに左右へ体重移動 | `amount` |
+| `turn` | 小節単位で体の向きを左右に振る | `amount`, `speed` |
+| `pump` | 拍の頭で片腕ずつ突き上げる | `amount` |
 
 モーションを足すときは `runtime/behaviors.js` に関数を1つ追加します。引数の `m` には
 `beatPos`、`beatPhase`、`beatPulse`、`barPos` / `barPhase`、`loudness`、`onset`、`energy`、`section`、`t` が入っています。

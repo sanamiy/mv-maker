@@ -62,6 +62,6 @@ export function musicAt(t, analysis, sections, fade = 0.4) {
     beatPulse: Math.exp(-beatPhase * 5),
     loudness: sampleEnvelope(loudness, rate, t),
     onset: sampleEnvelope(onset, rate, t),
-    section: cur.name, sectionIndex: si, energy, expression,
+    section: cur.name, sectionIndex: si, sectionBlend: blend, energy, expression,
   };
 }
