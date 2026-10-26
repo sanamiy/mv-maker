@@ -1,0 +1,54 @@
+/* 見せ方はすべてここ。--beat-pulse / --energy などは mv-maker が毎フレーム更新する */
+
+/* ---------- 背景 ---------- */
+.sky {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 55%, #3a2f7a 0%, #14102e 60%, #07060f 100%);
+}
+[data-section="chorus"] .sky {
+  background: radial-gradient(circle at 50% 55%, #ff7aa8 0%, #c2185b 45%, #2a0a2e 100%);
+}
+.rings i {
+  position: absolute; left: 50%; top: 55%; width: 1200px; height: 1200px;
+  margin: -600px 0 0 -600px; border-radius: 50%;
+  border: 6px solid rgba(255, 255, 255, .5);
+  /* 拍ごとに中心から広がって消える（--beat-phase は拍内の位置 0→1） */
+  scale: calc(.05 + var(--beat-phase) * .95);
+  opacity: calc((1 - var(--beat-phase)) * var(--energy) * .6);
+}
+.rings i:nth-child(2) { scale: calc(.05 + max(0, var(--beat-phase) - .2) * 1.2); }
+.rings i:nth-child(3) { scale: calc(.05 + max(0, var(--beat-phase) - .4) * 1.6); border-width: 3px; }
+.stripes {
+  position: absolute; inset: -50%;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,.14) 0deg 8deg, transparent 8deg 20deg);
+  rotate: calc(var(--t) * 12deg);
+  animation: mv-fade-in .6s both;
+}
+.glow {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 40%;
+  background: linear-gradient(transparent, rgba(255, 120, 200, calc(var(--beat-pulse) * .35 * var(--energy))));
+}
+
+/* ---------- 文字 ---------- */
+.title {
+  position: absolute; top: 34%; width: 100%; text-align: center; margin: 0;
+  font-size: 88px; font-weight: 900; letter-spacing: .04em;
+  text-shadow: 0 0 24px #8f7aff, 0 4px 0 #3a2f7a;
+}
+.credit { position: absolute; bottom: 7%; width: 100%; text-align: center; font-size: 24px; opacity: .85; margin: 0; }
+.lyric {
+  position: absolute; bottom: 9%; width: 100%; text-align: center; margin: 0;
+  font-size: 44px; font-weight: bold;
+  --edge: #1a1440;
+  text-shadow: 3px 0 var(--edge), -3px 0 var(--edge), 0 3px var(--edge), 0 -3px var(--edge),
+               2px 2px var(--edge), -2px 2px var(--edge), 2px -2px var(--edge), -2px -2px var(--edge);
+}
+.lyric.big { bottom: 12%; font-size: 64px; --edge: #8a1040; }
+.lyric.big .mv-ch { translate: 0 calc(var(--beat-pulse) * -10px); }
+.badge {
+  position: absolute; top: 6%; left: 5%; padding: 6px 22px; border-radius: 999px;
+  background: #fff; color: #c2185b; font-weight: 900; font-size: 28px; letter-spacing: .1em;
+}
+.badge span { display: inline-block; }
+.stars { position: absolute; top: 5%; right: 6%; rotate: calc(var(--beat) * 45deg); scale: calc(.8 + var(--beat-pulse) * .4); }
+.end { position: absolute; top: 40%; width: 100%; text-align: center; font-size: 48px; letter-spacing: .2em; }
