@@ -1,0 +1,20 @@
+{
+  "name": "mv-maker",
+  "version": "0.1.0",
+  "description": "音楽に合わせてVRMキャラが動くMVを書き出す軽量フレームワーク",
+  "scripts": {
+    "demo:song": "node tools/make-test-song.mjs examples/demo/song.wav",
+    "demo:vrm": "node tools/fetch-test-vrm.mjs",
+    "analyze": "node src/analyze.mjs",
+    "render": "node src/render.mjs",
+    "preview": "node src/preview.mjs",
+    "demo": "npm run demo:song && npm run demo:vrm && node src/analyze.mjs examples/demo/song.wav examples/demo/analysis.json && node src/render.mjs examples/demo/scene.json out/demo.mp4"
+  },
+  "dependencies": {
+    "@pixiv/three-vrm": "^3.5.5",
+    "playwright": "^1.63.0",
+    "three": "^0.186.1"
+  },
+  "type": "module",
+  "private": true
+}
