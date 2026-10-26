@@ -54,8 +54,14 @@ python3 -m venv .venv && .venv/bin/pip install stable-ts
 .venv/bin/pip install demucs        # 任意: ボーカルを抜き出してから合わせる（伴奏が厚い曲で精度が上がる）
 ```
 
-これで `prepare.mjs` が自動で使います。オプションは `--model medium`（`small` は速い、`large-v3` はより正確）、
-`--language en`、`--separate`（demucs を使う）。初回はモデルを数百MB〜数GBダウンロードします。
+これで `prepare.mjs` が自動で使います。オプションは `--model small`（既定。歌詞は手元にあるので聞き取りの精度はそれほど要らない。`medium` / `large-v3` はより正確で重い）、
+`--language en`、`--separate`（demucs を使う）。初回はモデル（small で約0.5GB）をダウンロードします。
+
+**モデルの差し替え** — 合わせ処理は `--backend` で切り替えられます。
+
+- `--backend stable-ts`（既定）: Whisper
+- `--backend command --command "my-aligner {audio} {lyrics} {output}"`: 好きな外部ツールに任せる。`{output}` に `{"words":[{"text","start","end"}]}` を書いてくれれば何でも使えます
+- 新しいモデルを組み込むときは `tools/align_lyrics.py` の `BACKENDS` に関数を1つ足すだけです。出力の形が同じなら、後段は何も変えずに使えます
 
 **手動（タップ）** — 自動がうまくいかない所の手直しや、自分で打ちたいとき。
 

@@ -1,4 +1,4 @@
-// node --test test/
+// node --test test/*.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseLyricsText, parseLrc, alignWords, buildLyrics, splitWords, toHtml, toLrc } from '../src/lyrics.mjs';

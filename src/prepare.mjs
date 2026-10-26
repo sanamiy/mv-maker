@@ -5,7 +5,8 @@
 //   node src/prepare.mjs song.mp3 lyrics.txt -o my-mv/ --timing song.lrc   # 手で打った / 手直しした LRC を使う
 //   node src/prepare.mjs song.mp3 -o my-mv/                            # 歌詞なし（拍と盛り上がりだけ）
 // オプション:
-//   --model medium --language en --separate   自動合わせの設定（tools/align_lyrics.py にそのまま渡す）
+//   --backend stable-ts|command --command "..." --model small --language en --separate
+//                     自動合わせの設定（tools/align_lyrics.py にそのまま渡す。モデルの差し替えは --backend で）
 //   --python <パス>   stable-ts の入った Python（省略時は .venv/bin/python → python3 の順に探す）
 //   --snap 0.5        行の頭を 8 分の拍に寄せる（0.1 秒以内のときだけ）
 //   --vrm <パス>      scene.json に書くキャラ
@@ -59,9 +60,12 @@ if (lyricsIn) {
   if (!timingFile) {
     step('歌詞の時刻を自動で合わせる（Whisper をローカルで実行、APIキー不要）');
     const python = [opt.python, path.join(ROOT, '.venv/bin/python'), 'python3'].find(p => p && (p === 'python3' || fs.existsSync(p)));
-    const ok = spawnSync(python, ['-c', 'import stable_whisper'], { stdio: 'ignore' }).status === 0;
+    const backend = opt.backend || process.env.MV_ALIGN_BACKEND || 'stable-ts';
+    const ok = backend !== 'stable-ts' || spawnSync(python, ['-c', 'import stable_whisper'], { stdio: 'ignore' }).status === 0;
     if (ok) {
       const args = [path.join(ROOT, 'tools/align_lyrics.py'), audio, at('lyrics.txt'), at('aligned.json')];
+      args.push('--backend', backend);
+      if (opt.command) args.push('--command', opt.command);
       if (opt.model) args.push('--model', opt.model);
       if (opt.language) args.push('--language', opt.language);
       if (opt.separate) args.push('--separate');
