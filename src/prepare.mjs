@@ -58,7 +58,7 @@ if (lyricsIn) {
   if (path.resolve(lyricsIn) !== at('lyrics.txt')) fs.copyFileSync(lyricsIn, at('lyrics.txt'));
   let timingFile = opt.timing ? path.resolve(opt.timing) : null;
   if (!timingFile) {
-    step('歌詞の時刻を自動で合わせる（Whisper をローカルで実行、APIキー不要）');
+    step('歌詞の時刻を自動で合わせる（手元で実行、APIキー不要）');
     const python = [opt.python, path.join(ROOT, '.venv/bin/python'), 'python3'].find(p => p && (p === 'python3' || fs.existsSync(p)));
     const backend = opt.backend || process.env.MV_ALIGN_BACKEND || 'stable-ts';
     const ok = backend !== 'stable-ts' || spawnSync(python, ['-c', 'import stable_whisper'], { stdio: 'ignore' }).status === 0;
