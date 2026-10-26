@@ -143,6 +143,10 @@ class Player {
       if (vrm.lookAt) vrm.lookAt.target = this.camera;
       this.three.add(vrm.scene);
       this.vrm = vrm;
+      // "smoothing": 秒。全ボーンをこの時定数で遅らせて追従させる（動きの角が取れて、重さが出る）。0 で無効
+      this.smoothing = ch.smoothing ?? 0;
+      this.smoothNodes = Object.keys(vrm.humanoid.humanBones).map(n => vrm.humanoid.getNormalizedBoneNode(n)).filter(Boolean)
+        .map(node => ({ node, q: node.quaternion.clone(), p: node.position.clone() }));
       this.expressionNames = vrm.expressionManager ? vrm.expressionManager.expressions.map(e => e.expressionName) : [];
     }
     this.renderer.compile(this.three, this.camera);
@@ -172,6 +176,8 @@ class Player {
         const w = (on(prev) ? 1 : 0) * (1 - m.sectionBlend) + (on(cur) ? 1 : 0) * m.sectionBlend;
         if (w > 0) fn(vrm, { ...m, energy: m.energy * w }, opts, state);
       }
+      if (this.smoothing > 0) this.smoothPose(i === 0 || this.jumped ? 1 : 1 - Math.exp(-dt / this.smoothing));
+      this.jumped = false;
       vrm.update(i === 0 ? 0 : dt);
     }
     // カメラ: 拍でわずかに寄り、盛り上がるとゆっくり回り込む
@@ -209,6 +215,14 @@ class Player {
     return m;
   }
 
+  // 前フレームの姿勢から今の目標姿勢へ a の割合だけ近づける（a=1 でそのまま）
+  smoothPose(a) {
+    for (const b of this.smoothNodes) {
+      b.q.slerp(b.node.quaternion, a); b.node.quaternion.copy(b.q);
+      b.p.lerp(b.node.position, a); b.node.position.copy(b.p);
+    }
+  }
+
   // 時刻 t のカメラ設定。ショットの中では position/target/fov/roll から to.* へ ease で動く
   shotAt(t) {
     const base = this.camCfg;
@@ -225,7 +239,7 @@ class Player {
   }
 
   // プレビュー用: 物理の積み上げを諦めて任意フレームへ飛ぶ
-  jump(i) { this.next = Math.max(0, Math.min(i, this.frameCount - 1)); }
+  jump(i) { this.next = Math.max(0, Math.min(i, this.frameCount - 1)); this.jumped = true; }
 
   // 現在の描画結果を RGBA（下から上の行順）で返す
   pixels() {

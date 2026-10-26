@@ -153,12 +153,19 @@ HTMLには「何を・いつ出すか」だけ、CSSには「どう見せるか�
 | `bounce` | 拍ごとに膝を曲げて沈む | `amount`（沈む量 m） |
 | `sway` | 2拍で左右に揺れる | `amount` |
 | `headNod` | 拍の頭でうなずく | `amount` |
-| `armSwing` | 左右交互に腕を振る。energy が `liftFrom` を超えると腕が上がる | `amount`, `liftFrom`, `lift` |
+| `armSwing` | 歩くように腕を前後に振る（肘は少し遅れる）。energy が `liftFrom` を超えると腕が横に上がる | `amount`, `liftFrom`, `lift` |
 | `blink` | 決定的なまばたき | `interval` |
 | `mouth` | 音量で口を開ける | `amount` |
 | `stepSide` | 拍ごとに左右へ体重移動 | `amount` |
 | `turn` | 小節単位で体の向きを左右に振る | `amount`, `speed` |
-| `pump` | 拍の頭で片腕ずつ突き上げる | `amount` |
+| `pump` | 拍の頭で片腕ずつ突き上げ、次の拍までにゆっくり下ろす | `amount` |
+| `jump` | `every` 拍ごとに跳ぶ（しゃがむ→跳ぶ→着地で沈む） | `every`, `offset`, `height`, `arms` |
+| `headTilt` | `every` 拍ごとに首をかしげて止める | `every`, `amount` |
+| `wave` | 片手を上げて振る | `side`, `speed` |
+| `clap` | 胸の前で手拍子（既定は2拍目と4拍目） | `beats`, `width` |
+| `choreo` | 拍ごとにポーズ（`up` `v` `cross` `wide` `point` `down`）を切り替える振り付け | `poses`, `beatsPerPose`, `blend`, `amount` |
+
+`character.smoothing`（秒、例 `0.06`）を書くと、全ボーンがその時定数で少し遅れて追従し、動きの角が取れます。
 
 モーションを足すときは `runtime/behaviors.js` に関数を1つ追加します。引数の `m` には
 `beatPos`、`beatPhase`、`beatPulse`、`barPos` / `barPhase`、`loudness`、`onset`、`energy`、`section`、`t` が入っています。
