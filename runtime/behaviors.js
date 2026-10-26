@@ -6,6 +6,8 @@
 // - 拍の頭の「キメ」は env()（短く立ち上がって、ゆっくり戻る）を使う。beatPulse は拍の頭で 0→1 に跳ぶので直接は使わない
 // - 仕上げに character.smoothing で全ボーンを少し遅らせて追従させる（player.js）
 
+import { applyMixamo } from './mixamo.js';
+
 const bone = (vrm, name) => vrm.humanoid.getNormalizedBoneNode(name);
 const add = (node, x = 0, y = 0, z = 0) => { if (node) { node.rotation.x += x; node.rotation.y += y; node.rotation.z += z; } };
 const PI = Math.PI;
@@ -163,6 +165,21 @@ export const behaviors = {
       const pa = a[name] ?? [0, 0, 0], pb = b[name] ?? [0, 0, 0];
       add(bone(vrm, name), ...pa.map((v, k) => (v + (pb[k] - v) * f) * w));
     }
+  },
+
+  // Mixamo の FBX の動き（file）。既定では拍に合わせて再生する: 1ループを beats 拍に伸び縮みさせる（省略時は元の長さに近い拍数）
+  // sync: "time" で元の速さ（speed 倍）。offset: 何拍目からループを始めるか。weight: 今の姿勢と混ぜる割合
+  // inPlace: 腰の移動を止める / faceFront: 正面を向いたまま / hips: false で腰の位置は使わない / mask: ["head", ...] で当てるボーンを絞る
+  // 下に書いたモーションはこの上に足される（例: mixamo のあとに headNod で拍のうなずきを足す）
+  mixamo(vrm, m, o, state) {
+    const clip = state.clip;
+    if (!clip) return;
+    const beats = o.beats ?? Math.max(1, Math.round(clip.duration / m.beatPeriod));
+    let time;
+    if (o.sync === 'time') time = (m.t - (o.start ?? 0)) * (o.speed ?? 1);
+    else time = ((m.steadyBeat - (o.offset ?? 0)) / beats) * clip.duration;
+    time = o.loop === false ? Math.min(Math.max(0, time), clip.duration) : ((time % clip.duration) + clip.duration) % clip.duration;
+    applyMixamo(clip, time, (o.weight ?? 1) * (m.weight ?? 1), o);
   },
 
   // ランダムっぽいが決定的なまばたき（表情の blink は他の表情より後に上書き）

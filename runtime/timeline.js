@@ -38,6 +38,23 @@ export function buildSections(scene, analysis) {
   return analysis.segments.map(s => ({ ...presets[s.level], from: s.start }));
 }
 
+// 拍の列に直線を当てはめた「揺れない拍の時計」（拍ごとの検出のばらつきを除いたもの）。analysis ごとに1回だけ計算する
+const steadyCache = new WeakMap();
+function steadyGrid(analysis, period) {
+  if (steadyCache.has(analysis)) return steadyCache.get(analysis);
+  const b = analysis.beats, n = b.length;
+  let fit = { t0: b[0] ?? 0, period };
+  if (n > 2) {
+    const mx = (n - 1) / 2, my = b.reduce((a, x) => a + x, 0) / n;
+    let sxy = 0, sxx = 0;
+    b.forEach((y, i) => { sxy += (i - mx) * (y - my); sxx += (i - mx) ** 2; });
+    const k = sxy / sxx;
+    fit = { t0: my - k * mx, period: k };
+  }
+  steadyCache.set(analysis, fit);
+  return fit;
+}
+
 export function musicAt(t, analysis, sections, fade = 0.4) {
   const period = 60 / (analysis.tempo || 120);
   const beatPos = gridPosition(analysis.beats, t, period);
@@ -58,6 +75,8 @@ export function musicAt(t, analysis, sections, fade = 0.4) {
   }
   return {
     t, beatPos, beatIndex, beatPhase, barPos, barIndex, barPhase,
+    // 揺れない拍の時計（Mixamo の再生など、速さが変わると困るもの用）と1拍の秒数
+    steadyBeat: (t - steadyGrid(analysis, period).t0) / steadyGrid(analysis, period).period, beatPeriod: steadyGrid(analysis, period).period,
     // 拍の頭で1、すぐ減衰するパルス
     beatPulse: Math.exp(-beatPhase * 5),
     loudness: sampleEnvelope(loudness, rate, t),

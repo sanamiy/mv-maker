@@ -7,6 +7,7 @@ import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { buildSections, musicAt } from './timeline.js';
 import { behaviors } from './behaviors.js';
 import { HtmlLayers, parseTime } from './layers.js';
+import { loadMixamo } from './mixamo.js';
 
 const BG_VERT = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 1.0, 1.0); }`;
 const BG_FRAG = `
@@ -148,6 +149,8 @@ class Player {
       this.smoothNodes = Object.keys(vrm.humanoid.humanBones).map(n => vrm.humanoid.getNormalizedBoneNode(n)).filter(Boolean)
         .map(node => ({ node, q: node.quaternion.clone(), p: node.position.clone() }));
       this.expressionNames = vrm.expressionManager ? vrm.expressionManager.expressions.map(e => e.expressionName) : [];
+      // Mixamo のモーション（{ "use": "mixamo", "file": "..." }）は先に読み込んで変換しておく
+      for (const mo of this.motions) if (mo.opts.use === 'mixamo') mo.state.clip = await loadMixamo(res(mo.opts.file), vrm);
     }
     this.renderer.compile(this.three, this.camera);
     this.next = 0;
@@ -174,7 +177,7 @@ class Player {
         const on = s => !!s && (opts.only ? opts.only.includes(s.name) : !opts.except.includes(s.name));
         const cur = this.sections[m.sectionIndex], prev = this.sections[m.sectionIndex - 1] ?? cur;
         const w = (on(prev) ? 1 : 0) * (1 - m.sectionBlend) + (on(cur) ? 1 : 0) * m.sectionBlend;
-        if (w > 0) fn(vrm, { ...m, energy: m.energy * w }, opts, state);
+        if (w > 0) fn(vrm, { ...m, energy: m.energy * w, weight: w }, opts, state);
       }
       if (this.smoothing > 0) this.smoothPose(i === 0 || this.jumped ? 1 : 1 - Math.exp(-dt / this.smoothing));
       this.jumped = false;

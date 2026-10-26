@@ -145,6 +145,28 @@ HTMLには「何を・いつ出すか」だけ、CSSには「どう見せるか�
 
 モーションには `"only": ["chorus"]` / `"except": ["pre-chorus"]` を書くと、そのセクションだけ（以外だけ）で動きます。
 
+### Mixamo のモーションを使う
+
+[Mixamo](https://www.mixamo.com/) の動きを VRM に当てはめて使えます（three-vrm 公式サンプルと同じ変換）。
+
+1. Mixamo で動きを選び、**Format: FBX Binary(.fbx) / Skin: Without Skin / Frames per Second: 30 / Keyframe Reduction: none** でダウンロード（歩く・走る系は **In Place** にチェック）
+2. `assets/mixamo/` に置く（git には入りません。Mixamo の素材はリポジトリに含めないでください）
+3. モーションに書く
+
+```jsonc
+{ "use": "mixamo", "file": "../assets/mixamo/Hip Hop Dancing.fbx", "only": ["chorus"] },
+{ "use": "headNod", "amount": 0.1 }   // 下に書いたモーションは Mixamo の上に足される
+```
+
+| パラメータ | 内容 |
+|---|---|
+| `beats` | 1ループを何拍に合わせるか（省略時は元の長さに近い拍数。曲のテンポに合わせて伸び縮みする） |
+| `offset` | 何拍目からループを始めるか |
+| `sync: "time"` / `speed` | 拍に合わせず元の速さ（の `speed` 倍）で再生 |
+| `weight` | 今の姿勢と混ぜる割合（0〜1）。`only` / `except` の境目でも自動でなめらかに混ざる |
+| `inPlace` / `faceFront` / `hips: false` | 腰の移動を止める / いつも正面を向かせる / 腰の位置を使わない |
+| `mask` | `["leftUpperArm", ...]` のように当てるボーンを絞る（腕だけ Mixamo、脚は手作り、など） |
+
 ### 用意してあるモーション
 
 | use | 内容 | 主なパラメータ |
@@ -193,6 +215,7 @@ runtime/layers.js    HTML/CSS のレイヤーを決定的に canvas へ描く
 runtime/mv.css       最初から使えるCSSの部品
 runtime/timeline.js  時刻 → 拍・小節・セクション・表情の補間
 runtime/behaviors.js モーション集
+runtime/mixamo.js    Mixamo の FBX を VRM 用に変換して再生
 tools/               テスト曲の生成、サンプルVRMの取得
 ```
 
