@@ -37,6 +37,7 @@ const frames = Math.min(info.frameCount, maxFrames);
 console.log(`${info.width}x${info.height} ${info.fps}fps, ${frames} frames`);
 console.log(`expressions: ${info.expressions.join(', ')}`);
 console.log(`sections: ${info.sections.join(' / ')}`);
+for (const mx of info.mixamo ?? []) console.log(`mixamo: ${JSON.stringify(mx)}`);
 
 fs.mkdirSync(path.dirname(path.resolve(outPath)), { recursive: true });
 const ff = spawn('ffmpeg', [

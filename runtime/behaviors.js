@@ -167,18 +167,27 @@ export const behaviors = {
     }
   },
 
-  // Mixamo の FBX の動き（file）。既定では拍に合わせて再生する: 1ループを beats 拍に伸び縮みさせる（省略時は元の長さに近い拍数）
-  // sync: "time" で元の速さ（speed 倍）。offset: 何拍目からループを始めるか。weight: 今の姿勢と混ぜる割合
-  // inPlace: 腰の移動を止める / faceFront: 正面を向いたまま / hips: false で腰の位置は使わない / mask: ["head", ...] で当てるボーンを絞る
-  // 下に書いたモーションはこの上に足される（例: mixamo のあとに headNod で拍のうなずきを足す）
+  // Mixamo の FBX の動き（file）。既定では、動きの中の拍（読み込み時に調べた、手足が止まる瞬間や足の着地）を
+  // 曲の拍に重ね、動きの「4拍のまとまりの頭」を曲の小節頭に合わせて再生する。速さは動きの拍1つ＝曲の 1/2・1・2 拍のうち近いものに伸び縮み
+  // motionBeat: 動きの拍1つを曲の何拍にするか（0.5 / 1 / 2 など、省略時は自動） / offset: 曲の何拍ぶん後ろへずらすか
+  // sync: "stretch"（beats 拍に1ループを伸び縮みするだけ）/ "time"（元の速さ、speed 倍）
+  // weight: 今の姿勢と混ぜる割合 / inPlace: 腰の移動を止める / faceFront: 正面を向いたまま / hips: false で腰の位置を使わない
+  // mask: ["head", ...] で当てるボーンを絞る。下に書いたモーションはこの上に足される
   mixamo(vrm, m, o, state) {
-    const clip = state.clip;
+    const clip = state.clip, info = state.info;
     if (!clip) return;
-    const beats = o.beats ?? Math.max(1, Math.round(clip.duration / m.beatPeriod));
+    const dur = clip.duration;
     let time;
     if (o.sync === 'time') time = (m.t - (o.start ?? 0)) * (o.speed ?? 1);
-    else time = ((m.steadyBeat - (o.offset ?? 0)) / beats) * clip.duration;
-    time = o.loop === false ? Math.min(Math.max(0, time), clip.duration) : ((time % clip.duration) + clip.duration) % clip.duration;
+    else if (o.sync === 'stretch' || !info) {
+      const beats = o.beats ?? Math.max(1, Math.round(dur / m.beatPeriod));
+      time = ((m.steadyBeat - (o.offset ?? 0)) / beats) * dur;
+    } else {
+      const k = o.motionBeat ?? [0.5, 1, 2].reduce((best, c) => (Math.abs(Math.log(m.beatPeriod * c / info.period)) < Math.abs(Math.log(m.beatPeriod * best / info.period)) ? c : best), 1);
+      const songBeats = m.steadyBeat - (state.barOffset ?? 0) - (o.offset ?? 0);
+      time = info.barPhase + (songBeats / k) * info.period;
+    }
+    time = o.loop === false ? Math.min(Math.max(0, time), dur) : ((time % dur) + dur) % dur;
     applyMixamo(clip, time, (o.weight ?? 1) * (m.weight ?? 1), o);
   },
 

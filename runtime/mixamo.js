@@ -92,3 +92,67 @@ export function applyMixamo(clip, time, weight, opts = {}) {
     }
   }
 }
+
+// 動きの中の「拍」を見つける。手足と腰の動きから、止まる瞬間（減速）と足の着地を「キメ」の強さとして時刻ごとに出し、
+// その繰り返しの周期（動きの拍の長さ）と、いちばん強いキメが来る位置（位相）を求める。
+// 返り値: { period 秒, phase 秒（拍の頭が来る時刻）, barPhase 秒（4拍のまとまりの頭）, beats（1ループの拍数）, bpm, strength, travel, accents }
+export function analyzeMotion(clip, vrm, { rate = 60, minBpm = 60, maxBpm = 180 } = {}) {
+  const names = ['leftHand', 'rightHand', 'leftFoot', 'rightFoot', 'hips', 'head'];
+  const nodes = names.map(n => vrm.humanoid.getNormalizedBoneNode(n));
+  const n = Math.max(8, Math.floor(clip.duration * rate)), dt = clip.duration / n;
+  const pos = [], v = new THREE.Vector3();
+  for (let i = 0; i < n; i++) {
+    vrm.humanoid.resetNormalizedPose();
+    applyMixamo(clip, i * dt, 1);
+    vrm.scene.updateMatrixWorld(true);
+    pos.push(nodes.map(nd => (nd ? nd.getWorldPosition(v).toArray() : [0, 0, 0])));
+  }
+  vrm.humanoid.resetNormalizedPose();
+  // 速さ（ループとして前後をつなぐ）
+  const speed = pos.map((p, i) => p.map((q, k) => Math.hypot(...q.map((x, j) => x - pos[(i + n - 1) % n][k][j])) / dt));
+  const accent = new Float64Array(n);
+  let strength = 0;
+  for (let i = 0; i < n; i++) {
+    const prev = speed[(i + n - 1) % n];
+    for (let k = 0; k < names.length; k++) {
+      const w = names[k] === 'hips' ? 1.5 : names[k] === 'head' ? 0.7 : 1;
+      accent[i] += w * Math.max(0, prev[k] - speed[i][k]) / dt; // 減速（止まる瞬間）
+      strength += speed[i][k] / (n * names.length);
+    }
+    // 足の着地: 下向きに動いていた足が止まる
+    for (const k of [2, 3]) {
+      const vy0 = (pos[(i + n - 1) % n][k][1] - pos[(i + n - 2) % n][k][1]) / dt, vy1 = (pos[i][k][1] - pos[(i + n - 1) % n][k][1]) / dt;
+      if (vy0 < 0) accent[i] += Math.max(0, vy1 - vy0) / dt * 2;
+    }
+  }
+  // 少しならす（約 50ms）
+  const sm = new Float64Array(n), half = Math.max(1, Math.round(0.025 * rate));
+  for (let i = 0; i < n; i++) { let s = 0; for (let j = -half; j <= half; j++) s += accent[(i + j + n) % n]; sm[i] = s / (2 * half + 1); }
+  const mean = sm.reduce((a, x) => a + x, 0) / n;
+  const a = Array.from(sm, x => x - mean);
+  // 周期: 円環の自己相関が最大になるずれ（BPM の範囲内）。倍・半分の取り違えを減らすため 100〜130 BPM 付近を少し優先
+  let best = { score: -Infinity, lag: Math.round(rate * 0.5) };
+  for (let lag = Math.round(rate * 60 / maxBpm); lag <= Math.round(rate * 60 / minBpm); lag++) {
+    let s = 0;
+    for (let i = 0; i < n; i++) s += a[i] * a[(i + lag) % n];
+    const bpm = 60 * rate / lag, prior = Math.exp(-0.5 * (Math.log2(bpm / 115) / 0.7) ** 2);
+    if (s * prior > best.score) best = { score: s * prior, lag };
+  }
+  // 1ループがちょうど整数拍になるよう周期を整える
+  const beats = Math.max(1, Math.round(n / best.lag)), period = clip.duration / beats;
+  // 位相: 拍の格子をずらしながら、格子上のキメの合計が最大になる位置
+  // 位相: キメの曲線のうち、拍の周期の成分（フーリエ成分）の山の位置。1点ずつ拾うより、ばらつきに強い
+  let re = 0, im = 0;
+  for (let i = 0; i < n; i++) { const w = 2 * Math.PI * i * dt / period; re += a[i] * Math.cos(w); im += a[i] * Math.sin(w); }
+  const phase = ((Math.atan2(im, re) / (2 * Math.PI)) * period + period) % period;
+  // 4拍のまとまりの頭: 4拍ごとのキメの合計が最大になる拍
+  let barPhase = phase, barTop = -Infinity;
+  for (let j = 0; j < 4; j++) {
+    let s = 0;
+    for (let k = j; k < beats; k += 4) for (let d = -2; d <= 2; d++) s += sm[(Math.round((phase + k * period) / dt) + d + n) % n];
+    if (s > barTop) { barTop = s; barPhase = phase + j * period; }
+  }
+  const beatClarity = Math.hypot(re, im) / (a.reduce((x, y) => x + Math.abs(y), 0) || 1); // 0〜1。拍がはっきりした動きほど大きい
+  const h0 = pos[0][4], travel = Math.max(...pos.map(p => Math.hypot(p[4][0] - h0[0], p[4][2] - h0[2])));
+  return { period, phase, barPhase: barPhase % clip.duration, beats, beatClarity, bpm: 60 / period, strength, travel, accents: Array.from(sm), rate: 1 / dt };
+}

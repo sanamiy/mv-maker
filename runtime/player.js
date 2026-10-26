@@ -7,7 +7,7 @@ import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { buildSections, musicAt } from './timeline.js';
 import { behaviors } from './behaviors.js';
 import { HtmlLayers, parseTime } from './layers.js';
-import { loadMixamo } from './mixamo.js';
+import { loadMixamo, analyzeMotion } from './mixamo.js';
 
 const BG_VERT = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 1.0, 1.0); }`;
 const BG_FRAG = `
@@ -150,11 +150,21 @@ class Player {
         .map(node => ({ node, q: node.quaternion.clone(), p: node.position.clone() }));
       this.expressionNames = vrm.expressionManager ? vrm.expressionManager.expressions.map(e => e.expressionName) : [];
       // Mixamo のモーション（{ "use": "mixamo", "file": "..." }）は先に読み込んで変換しておく
-      for (const mo of this.motions) if (mo.opts.use === 'mixamo') mo.state.clip = await loadMixamo(res(mo.opts.file), vrm);
+      // 動きの中の拍も調べておき、曲の拍・小節頭に合わせて再生できるようにする
+      this.mixamoInfo = [];
+      const downbeat0 = musicAt(this.analysis.downbeats[0] ?? 0, this.analysis, this.sections).steadyBeat;
+      for (const mo of this.motions) {
+        if (mo.opts.use !== 'mixamo') continue;
+        mo.state.clip = await loadMixamo(res(mo.opts.file), vrm);
+        mo.state.info = analyzeMotion(mo.state.clip, vrm);
+        mo.state.barOffset = ((downbeat0 % 4) + 4) % 4;
+        const { bpm, beats, phase, barPhase, strength, travel } = mo.state.info;
+        this.mixamoInfo.push({ file: mo.opts.file, duration: +mo.state.clip.duration.toFixed(2), bpm: +bpm.toFixed(1), beats, phase: +phase.toFixed(3), barPhase: +barPhase.toFixed(3), strength: +strength.toFixed(2), travel: +travel.toFixed(2) });
+      }
     }
     this.renderer.compile(this.three, this.camera);
     this.next = 0;
-    return { width: this.width, height: this.height, fps: this.fps, frameCount: this.frameCount, duration: this.duration, audio: this.audioUrl, expressions: this.expressionNames ?? [], sections: this.sections.map(s => `${s.from}s ${s.name}`) };
+    return { width: this.width, height: this.height, fps: this.fps, frameCount: this.frameCount, duration: this.duration, audio: this.audioUrl, expressions: this.expressionNames ?? [], mixamo: this.mixamoInfo ?? [], sections: this.sections.map(s => `${s.from}s ${s.name}`) };
   }
 
   // フレーム i を描く。SpringBone などの物理は前フレームからの積み上げなので、必ず 0 から順に呼ぶ。
