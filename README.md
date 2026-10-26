@@ -167,6 +167,20 @@ HTMLには「何を・いつ出すか」だけ、CSSには「どう見せるか�
 | `inPlace` / `faceFront` / `hips: false` | 腰の移動を止める / いつも正面を向かせる / 腰の位置を使わない |
 | `mask` | `["leftUpperArm", ...]` のように当てるボーンを絞る（腕だけ Mixamo、脚は手作り、など） |
 
+#### 動きのカタログ（`assets/mixamo/catalog.json`）
+
+MV に使えそうな Mixamo の動き（ダンス中心に28個）を、AI や人が選びやすいように タグ（ジャンル・エネルギー1〜5・合う曲のテンポ帯・主に動く部位・その場か移動か・ループ可否・向き・向くセクション・雰囲気）と解析値で引ける一覧です。形式は `assets/mixamo/catalog.schema.json`。Mixamo の FBX・説明文・サムネイルは入れず、動きの名前と自前のタグ・解析値だけを持ちます。
+
+```sh
+node tools/mixamo-catalog.mjs            # assets/mixamo/ の FBX を解析して analysis / derived を書き込み、まだ無い動きを一覧表示
+node tools/mixamo-catalog.mjs --missing  # ダウンロードしてほしい動きの一覧だけ出す
+```
+
+- `tags` は人（や AI）が付けたタグ。`tagSource: "guess"` は名前からの推測なので、動きを見て直したら `"reviewed"` にする
+- `analysis` の bpm・拍数・位相・強さ・移動量は `runtime/mixamo.js` の `analyzeMotion`（再生時に曲の拍へ合わせるのと同じ解析）。ほかにループのつながり・部位ごとの動きの割合・向きの変化を足している
+- `derived` は解析値から機械的に決めたタグ。`tags` と食い違うところは見直しの手がかりに
+- ファイル名は Mixamo の初期名のままか動きの名前（大文字小文字・空白は問わない）。別名なら `file` に書く
+
 ### 用意してあるモーション
 
 | use | 内容 | 主なパラメータ |
@@ -216,7 +230,7 @@ runtime/mv.css       最初から使えるCSSの部品
 runtime/timeline.js  時刻 → 拍・小節・セクション・表情の補間
 runtime/behaviors.js モーション集
 runtime/mixamo.js    Mixamo の FBX を VRM 用に変換して再生
-tools/               テスト曲の生成、サンプルVRMの取得
+tools/               テスト曲の生成、サンプルVRMの取得、Mixamo の動きのカタログ更新
 ```
 
 ## メモ

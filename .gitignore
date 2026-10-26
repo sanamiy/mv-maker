@@ -4,4 +4,7 @@ assets/*.vrm
 *.mp4
 examples/demo/song.wav
 .venv/
-assets/mixamo/
+# Mixamo の FBX は入れない（カタログとスキーマだけ入れる）
+assets/mixamo/*
+!assets/mixamo/catalog.json
+!assets/mixamo/catalog.schema.json

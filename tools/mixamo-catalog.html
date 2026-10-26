@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>mixamo catalog analyzer</title>
+<script type="importmap">
+{ "imports": {
+  "three": "../node_modules/three/build/three.module.js",
+  "three/addons/": "../node_modules/three/examples/jsm/",
+  "@pixiv/three-vrm": "../node_modules/@pixiv/three-vrm/lib/three-vrm.module.js"
+} }
+</script>
+</head>
+<body>
+<script type="module">
+// tools/mixamo-catalog.mjs から開く解析用ページ。描画はせず、VRM に Mixamo の動きを当てて数値だけ出す。
+// 拍の周期・強さ・移動量は runtime/mixamo.js の analyzeMotion（再生時と同じ解析）をそのまま使い、
+// ここではカタログ用の補助の値（ループのつながり、体の部位ごとの動きの割合、向きの変化）だけを足す。
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+import { loadMixamo, analyzeMotion } from '../runtime/mixamo.js';
+
+const GROUPS = {
+  arms: ['leftShoulder', 'leftUpperArm', 'leftLowerArm', 'leftHand', 'rightShoulder', 'rightUpperArm', 'rightLowerArm', 'rightHand'],
+  legs: ['leftUpperLeg', 'leftLowerLeg', 'leftFoot', 'rightUpperLeg', 'rightLowerLeg', 'rightFoot'],
+  torso: ['spine', 'chest', 'upperChest'],
+  hips: ['hips'],
+  head: ['neck', 'head'],
+};
+
+let vrm;
+window.loadVrm = async url => {
+  const loader = new GLTFLoader();
+  loader.register(p => new VRMLoaderPlugin(p));
+  const gltf = await loader.loadAsync(url);
+  vrm = gltf.userData.vrm;
+  VRMUtils.combineSkeletons(gltf.scene);
+  if (vrm.meta?.metaVersion === '0') VRMUtils.rotateVRM0(vrm);
+  new THREE.Scene().add(vrm.scene);
+  vrm.scene.updateMatrixWorld(true);
+  return vrm.meta?.name ?? vrm.meta?.title ?? '';
+};
+
+window.analyze = async url => {
+  const clip = await loadMixamo(url, vrm);
+  const info = analyzeMotion(clip, vrm);
+  const rate = 30, n = Math.max(2, Math.round(clip.duration * rate)), dt = clip.duration / n;
+  const q0 = new THREE.Quaternion(), q1 = new THREE.Quaternion();
+  const rot = clip.tracks.filter(t => t.kind === 'q');
+  const at = (tr, t, q) => q.fromArray(tr.interp.evaluate(t));
+  // 部位ごとの回転の速さの合計（rad）。腕と脚はボーン数が違うので、ボーン1本あたりで割ってから割合にする
+  const amount = {};
+  for (const [g, bones] of Object.entries(GROUPS)) {
+    const trs = rot.filter(tr => bones.includes(tr.boneName));
+    let s = 0;
+    for (const tr of trs) for (let i = 1; i <= n; i++) s += at(tr, (i - 1) * dt, q0).angleTo(at(tr, i * dt, q1));
+    amount[g] = trs.length ? s / trs.length / clip.duration : 0;
+  }
+  const total = Object.values(amount).reduce((a, x) => a + x, 0) || 1;
+  const bodyShare = Object.fromEntries(Object.entries(amount).map(([g, x]) => [g, +(x / total).toFixed(2)]));
+  // ループのつながり: 最初と最後の姿勢の差（全ボーンの平均角度、度）
+  let loopDeg = 0;
+  for (const tr of rot) loopDeg += at(tr, 0, q0).angleTo(at(tr, clip.duration, q1));
+  loopDeg = loopDeg / (rot.length || 1) * 180 / Math.PI;
+  // 腰の向き（上下軸まわり）の変化: 最大の振れ幅と、最初→最後の差（度）
+  const hips = rot.find(tr => tr.boneName === 'hips');
+  const fwd = new THREE.Vector3(), yaws = [];
+  for (let i = 0; i <= n && hips; i++) { fwd.set(0, 0, 1).applyQuaternion(at(hips, i * dt, q0)); yaws.push(Math.atan2(fwd.x, fwd.z) * 180 / Math.PI); }
+  let unwrapped = [yaws[0] ?? 0];
+  for (let i = 1; i < yaws.length; i++) { let d = yaws[i] - yaws[i - 1]; d -= 360 * Math.round(d / 360); unwrapped.push(unwrapped[i - 1] + d); }
+  const yawRange = Math.max(...unwrapped) - Math.min(...unwrapped), yawNet = unwrapped.at(-1) - unwrapped[0];
+  // 腰の上下の振れ幅（m）: 跳ねる・沈む動きの大きさ
+  const hp = clip.tracks.find(t => t.kind === 'p');
+  let hy = [0];
+  if (hp) { hy = []; for (let i = 0; i <= n; i++) hy.push(hp.interp.evaluate(i * dt)[1]); }
+  const r = (x, d = 2) => +x.toFixed(d);
+  return {
+    duration: r(clip.duration), bpm: r(info.bpm, 1), period: r(info.period, 3), beats: info.beats, phase: r(info.phase, 3), barPhase: r(info.barPhase, 3),
+    beatClarity: r(info.beatClarity), strength: r(info.strength), travel: r(info.travel),
+    hipsBounce: r(Math.max(...hy) - Math.min(...hy), 3), yawRange: Math.round(yawRange), yawNet: Math.round(yawNet), loopDeg: r(loopDeg, 1), bodyShare,
+  };
+};
+window.READY = true;
+</script>
+</body>
+</html>
