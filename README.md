@@ -172,3 +172,20 @@ tools/               テスト曲の生成、サンプルVRMの取得
 
 - `assets/test.vrm` は three-vrm リポジトリのサンプルモデルで、動作確認用です（リポジトリには含めていません）。
 - GPU の無い環境（クラウド等）では SwiftShader で描くので 720p で 2fps 前後です。GPU のある PC ではもっと速くなります。
+
+## 素材について
+
+このリポジトリにはモデル・モーション・曲は入っていません。Mixamo の FBX、CMU のモーションキャプチャ、MMD の素材は再配布できないため、各自で入手して手元に置きます。入手方法と置き場所は [docs/assets.md](docs/assets.md) にまとめています。
+
+## クレジット
+
+- [three.js](https://threejs.org/)（MIT）
+- [@pixiv/three-vrm](https://github.com/pixiv/three-vrm)（MIT）。動作確認用のサンプル VRM もこのリポジトリから取得します
+- [Playwright](https://playwright.dev/)（Apache-2.0）
+- [FFmpeg](https://ffmpeg.org/)（LGPL/GPL。別途インストールして使います）
+- 歌詞の自動合わせ: [stable-ts](https://github.com/jianfch/stable-ts)（MIT）/ [OpenAI Whisper](https://github.com/openai/whisper)（MIT）、ボーカル分離: [Demucs](https://github.com/facebookresearch/demucs)（MIT）
+- モーション: [Mixamo](https://www.mixamo.com/)（Adobe）、[CMU Graphics Lab Motion Capture Database](http://mocap.cs.cmu.edu/)（使う場合。各自で入手）
+
+## ライセンス
+
+コードは [MIT License](LICENSE) です。各自で用意した素材には、それぞれの素材の利用条件が適用されます。
