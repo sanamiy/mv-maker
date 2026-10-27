@@ -124,7 +124,7 @@ if (fs.existsSync(at('scene.json'))) {
 
 if (!opt['no-check']) {
   step('確認動画を作る（歌詞の色変わり + 拍のクリック）');
-  syncCheck({ audio, analysis, lyrics, output: at('check.mp4') });
+  await syncCheck({ audio, analysis, lyrics, output: at('check.mp4') });
   console.log(at('check.mp4'));
 }
 console.log(`\n完了。書き出し: node src/render.mjs ${path.relative(process.cwd(), at('scene.json'))} out/mv.mp4`);
