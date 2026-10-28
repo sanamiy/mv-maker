@@ -15,12 +15,13 @@ export function serveFile(req, res) {
   if (!fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404).end('not found'); return; }
   const stat = fs.statSync(file), type = MIME[path.extname(file)] ?? 'application/octet-stream';
   const range = req.headers.range?.match(/bytes=(\d*)-(\d*)/);
+  // no-store: 保存した内容をプレビューの読み込み直しですぐ反映させるため
   if (range) { // 音声のシークに必要
     const start = Number(range[1] || 0), end = range[2] ? Number(range[2]) : stat.size - 1;
-    res.writeHead(206, { 'Content-Type': type, 'Content-Range': `bytes ${start}-${end}/${stat.size}`, 'Accept-Ranges': 'bytes', 'Content-Length': end - start + 1 });
+    res.writeHead(206, { 'Content-Type': type, 'Content-Range': `bytes ${start}-${end}/${stat.size}`, 'Accept-Ranges': 'bytes', 'Content-Length': end - start + 1, 'Cache-Control': 'no-store' });
     fs.createReadStream(file, { start, end }).pipe(res);
   } else {
-    res.writeHead(200, { 'Content-Type': type, 'Content-Length': stat.size, 'Accept-Ranges': 'bytes' });
+    res.writeHead(200, { 'Content-Type': type, 'Content-Length': stat.size, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' });
     fs.createReadStream(file).pipe(res);
   }
 }
