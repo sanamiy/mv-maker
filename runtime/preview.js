@@ -7,7 +7,7 @@ const KEY = `mv-preview:${sceneUrl}`;
 const saved = (() => { try { return JSON.parse(sessionStorage.getItem(KEY)) || {}; } catch { return {}; } })();
 
 const css = `
-body{--accent:#ff4d8d;--bar:#141414;--track:#2c2c2c;--track2:#232323;--text:#ddd;--dim:#888;display:flex;flex-direction:column;height:100vh;color:var(--text);font:13px/1.4 system-ui,sans-serif}
+body{--accent:#e5322d;--bar:#141414;--track:#2c2c2c;--track2:#232323;--text:#ddd;--dim:#888;display:flex;flex-direction:column;height:100vh;color:var(--text);font:13px/1.4 system-ui,sans-serif}
 #mv{flex:1;min-height:0;width:100%;object-fit:contain;cursor:pointer}
 .pv{flex:none;background:var(--bar);padding:6px 12px 8px;user-select:none}
 .pv.hidden{display:none}

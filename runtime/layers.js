@@ -129,6 +129,9 @@ export class HtmlLayers {
     return this.layers;
   }
 
+  // アニメーションの開始時刻の記録を消す（プレビューで飛んだとき、Player.replayHtml が記録し直す）
+  reset() { for (const l of this.layers) for (const a of l.all) { a.anim = null; a.origin = 0; } }
+
   // m: musicAt() の結果。終わると各レイヤーの canvas が最新になる（変化が無ければ描き直さない）
   // draw: false ならアニメーションの状態だけ進めて、canvas には描かない
   async update(m, draw = true) {

@@ -200,7 +200,7 @@ class Player {
   async frame(i, draw = true) {
     if (i !== this.next) throw new Error(`frames must be sequential: expected ${this.next}, got ${i}`);
     this.next++;
-    const dt = 1 / this.fps, t = i * dt;
+    const dt = 1 / this.fps, t = i * dt, jumped = this.jumped;
     const m = musicAt(t, this.analysis, this.sections);
     const vrm = this.vrm;
     if (vrm) {
@@ -243,6 +243,7 @@ class Player {
     this.key.color.copy(this._ca).lerp(this._cb, m.sectionBlend ?? 1);
 
     if (this.html) {
+      if (jumped) await this.replayHtml(i);
       await this.html.update(m, draw);
       for (const l of this.html.layers) if (l.dirty) { l.texture.needsUpdate = true; l.dirty = false; }
     }
@@ -284,6 +285,18 @@ class Player {
     const lerp = (x, y) => (Array.isArray(x) ? x.map((v, i) => v + (y[i] - v) * e) : x + (y - x) * e);
     for (const key of ['position', 'target', 'fov', 'roll']) if (s.to[key] != null) a[key] = lerp(a[key], s.to[key]);
     return a;
+  }
+
+  // 飛んだ先で HTML レイヤーのアニメーションを書き出しと同じ状態にする。
+  // アニメーションの開始時刻は「名前が変わったフレーム」で決まり、名前が変わり得るのは要素の表示/非表示（data-start / data-end）と
+  // セクション（data-section）の切り替わりだけなので、0 から全フレームをたどらずに、その前後のフレームだけを順に通す
+  async replayHtml(i) {
+    const frames = new Set();
+    const add = x => { if (Number.isFinite(x)) for (const f of [Math.floor(x * this.fps), Math.ceil(x * this.fps)]) if (f >= 0 && f < i) frames.add(f); };
+    for (const l of this.html.layers) for (const { start, end } of l.timed) { add(start); add(end); }
+    for (const s of this.sections) add(s.from);
+    this.html.reset();
+    for (const f of [...frames].sort((a, b) => a - b)) await this.html.update(musicAt(f / this.fps, this.analysis, this.sections), false);
   }
 
   // プレビュー用: 物理の積み上げを諦めて任意フレームへ飛ぶ
