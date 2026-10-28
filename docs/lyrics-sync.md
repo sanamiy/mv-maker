@@ -16,6 +16,7 @@ node src/render.mjs my-mv/scene.json out/my-mv.mp4
 | `lyrics.json` | 行と単語ごとの開始・終了時刻、どのセクションか | 歌詞テロップ、口パク、行ごとの演出 |
 | `lyrics.lrc` | 行ごとの時刻（一般的な LRC） | 手直し用、他のツールへの持ち出し |
 | `lyrics.html` | `data-start` / `data-end` 付きの歌詞 HTML | 文字レイヤー（CSS でカラオケ風の色変わりなど） |
+| `lyrics.css` | 歌詞の見た目の下書き（既にあれば上書きしない） | 文字の大きさや出方をここで変える |
 | `scene.json` | シーンの下書き。セクションは歌詞の `[Chorus]` などの見出しから作る | そのまま書き出せる |
 | `check.mp4` | 歌詞の色変わり + 拍のクリック音だけの軽い確認動画 | ずれていないか耳と目で確かめる |
 
@@ -98,7 +99,7 @@ node src/sync-check.mjs song.mp3 analysis.json [lyrics.json] check.mp4 [--from 3
 ### 文字レイヤーで使う
 
 `lyrics.html` は文字レイヤー（scene.json の `"layers"`）の決まりに合わせてあり、`prepare.mjs` が作る `scene.json` には最初から
-`{ "src": "lyrics.html", "place": "front" }` が入っています。
+`{ "src": "lyrics.html", "place": "front" }` と見た目の下書き `lyrics.css` が入っています。
 
 ```html
 <p class="lyric" data-section="chorus" data-start="15.050" data-end="17.500">

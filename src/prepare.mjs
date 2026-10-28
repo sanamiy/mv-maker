@@ -29,6 +29,20 @@ import { fileURLToPath } from 'node:url';
 import { buildLyrics, loadTiming, toLrc, toHtml, toSceneSections } from './lyrics.mjs';
 import { syncCheck } from './sync-check.mjs';
 
+// 歌詞の見た目の下書き。lyrics.html は作り直すたびに上書きされるので、見た目はこちらで変える
+const LYRICS_CSS = `.lyric {
+  position: absolute; bottom: 9%; width: 100%; text-align: center; margin: 0;
+  font-size: 44px; font-weight: bold; color: #fff;
+  --edge: #1a1440;
+  text-shadow: 3px 0 var(--edge), -3px 0 var(--edge), 0 3px var(--edge), 0 -3px var(--edge),
+               2px 2px var(--edge), -2px 2px var(--edge), 2px -2px var(--edge), -2px -2px var(--edge);
+}
+/* 単語は歌われた瞬間に下からふわっと出る */
+.lyric .mv-word { animation: word-in .18s ease-out both; }
+@keyframes word-in { from { opacity: 0; translate: 0 12px; } to { opacity: 1; translate: 0 0; } }
+.lyric[data-section="chorus"], .lyric[data-section="final-chorus"] { font-size: 56px; --edge: #8a1040; }
+`;
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2), pos = [], opt = {};
 for (let i = 0; i < argv.length; i++) {
@@ -103,6 +117,8 @@ if (fs.existsSync(at('scene.json'))) {
   if (lyrics && !scene.lyrics) {
     scene.lyrics = 'lyrics.json';
     if (!(scene.layers || []).some(l => l.src === 'lyrics.html')) scene.layers = [...(scene.layers || []), { src: 'lyrics.html', place: 'front' }];
+    if (!(scene.styles || []).includes('lyrics.css')) scene.styles = [...(scene.styles || []), 'lyrics.css'];
+    if (!fs.existsSync(at('lyrics.css'))) fs.writeFileSync(at('lyrics.css'), LYRICS_CSS);
     if (scene.sections === 'auto' && hasTags) scene.sections = toSceneSections(lyrics);
     fs.writeFileSync(at('scene.json'), JSON.stringify(scene, null, 2) + '\n');
     console.log('既存の scene.json に歌詞（と見出しからのセクション）を足しました');
@@ -110,14 +126,18 @@ if (fs.existsSync(at('scene.json'))) {
 } else {
   const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples/demo/scene.json'), 'utf8'));
   const vrm = opt.vrm ? path.resolve(opt.vrm) : path.join(ROOT, 'assets/test.vrm');
+  // デモのレイヤー（背景・文字の HTML）はデモ用なので持ってこない。背景は組み込みのシェーダー、文字は歌詞だけ
+  const { layers, styles, ...rest } = base;
   const scene = {
-    ...base,
+    ...rest,
     audio: path.basename(audio),
     analysis: 'analysis.json',
-    ...(lyrics ? { lyrics: 'lyrics.json', layers: [{ src: 'lyrics.html', place: 'front' }] } : {}),
+    background: base.background || { low: '#1d1b3a', high: '#ff4d8d' },
+    ...(lyrics ? { lyrics: 'lyrics.json', layers: [{ src: 'lyrics.html', place: 'front' }], styles: ['lyrics.css'] } : {}),
     character: { ...base.character, vrm: path.relative(out, vrm).split(path.sep).join('/') },
     sections: hasTags ? toSceneSections(lyrics) : 'auto',
   };
+  if (lyrics && !fs.existsSync(at('lyrics.css'))) fs.writeFileSync(at('lyrics.css'), LYRICS_CSS);
   fs.writeFileSync(at('scene.json'), JSON.stringify(scene, null, 2) + '\n');
   console.log(`${at('scene.json')}（セクション: ${hasTags ? '歌詞の見出しから' : '盛り上がりから自動'}）`);
 }
