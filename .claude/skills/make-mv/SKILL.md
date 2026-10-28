@@ -68,9 +68,14 @@ new-song は音量の大きさから仮の区間（`low1` / `mid1` / `high1` …
 一から振り付けを作らない（関節を数式やキーで回した動きは、人の動きに見えない）。
 エージェントの仕事は、曲の区間ごとに合う動きをカタログから選び、なめらかにつなぎ、速さを変えて踏み込みや決めポーズを拍・小節頭に合わせること。
 
-Mixamo の動きは `{ "use": "mixamo", "file": "../assets/mixamo/<名前>.fbx" }` で使える（README の「Mixamo のモーションを使う」）。
-どの動きがどの区間に合うかは `assets/mixamo/catalog.json` のタグと解析値で選ぶ。FBX は依頼者の手元にしかないので、
-`node tools/mixamo-catalog.mjs --missing` で足りない動きを確かめ、無ければダウンロードを依頼者に頼む。
+動きは open-vrma の一覧から選ぶ（README「open-vrma の動きを使う」）。区間ごとに次の順で絞る。
+1. `node src/motions.mjs search --section <区間> --bpm <analysis.json の tempo> --facing front` で候補を出す（`--energy` で盛り上がりに合わせ、作品の使い道に合わせて `--license` を付ける）
+2. 何小節も続く区間は `--loop` で、ループできるものを優先する。ループできない動きは出番より長いものを選ぶか、区間を分けて別の動きをつなぐ
+3. 前の区間の動きを `--after <id>` に渡し、姿勢がつながるものを選ぶ
+4. scene.json に `{ "use": "clip", "motion": "<id>", "only": ["<区間>"] }` と書き（render / stills / preview が足りない動きを自動で取ってくる。先に取るなら `node src/motions.mjs pull --scene songs/<名前>`）
+5. `node src/check.mjs` の動きの警告（テンポが合わない・出番より短い）を直し、出てきたクレジットを概要欄の案に入れる
+
+open-vrma に合う動きが無いときは、依頼者の手元にある Mixamo の FBX も使える（`{ "use": "mixamo", "file": "../assets/mixamo/<名前>.fbx" }`、選ぶときは `assets/mixamo/catalog.json`）。
 `idle`・`bounce` などの用意してある動きは仮のもの（`blink`・`mouth` は使ってよい）。モーションデータを使えないときだけ使い、報告で「動きは仮」と伝える。
 
 ### 7. 試しに書き出して点検する

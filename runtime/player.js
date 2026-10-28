@@ -8,6 +8,8 @@ import { buildSections, musicAt } from './timeline.js';
 import { behaviors } from './behaviors.js';
 import { HtmlLayers, parseTime } from './layers.js';
 import { loadMixamo, analyzeMotion } from './mixamo.js';
+import { loadVrma, infoFromMeta } from './vrma.js';
+import { loadLibrary } from './library.js';
 
 const BG_VERT = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 1.0, 1.0); }`;
 const BG_FRAG = `
@@ -153,13 +155,39 @@ class Player {
       // 動きの中の拍も調べておき、曲の拍・小節頭に合わせて再生できるようにする
       this.mixamoInfo = [];
       const downbeat0 = musicAt(this.analysis.downbeats[0] ?? 0, this.analysis, this.sections).steadyBeat;
+      // ライブラリの動き（{ "use": "clip", "motion": "<id>" }）は一覧から VRMA とメタデータの場所を引く
+      // 一覧は scene.json の motionLibraries（scene.json からの相対パス）、なければ assets/open-vrma/
+      let library = null;
+      const getText = async u => { const r = await fetch(u); if (!r.ok) throw new Error(`${r.status} ${u}`); return r.text(); };
       for (const mo of this.motions) {
-        if (mo.opts.use !== 'mixamo') continue;
-        mo.state.clip = await loadMixamo(res(mo.opts.file), vrm);
-        mo.state.info = analyzeMotion(mo.state.clip, vrm);
+        if (mo.opts.use !== 'mixamo' && mo.opts.use !== 'clip') continue;
+        if (mo.opts.use === 'clip') {
+          let url = mo.opts.file ? res(mo.opts.file) : null, meta = null;
+          if (mo.opts.motion) {
+            library ??= await loadLibrary((S.motionLibraries ?? [new URL('../assets/open-vrma/', import.meta.url).href]).map(u => ({ url: res(u) })), getText);
+            const row = library.find(mo.opts.motion);
+            if (!row) throw new Error(`motion "${mo.opts.motion}" が一覧にありません（node src/motions.mjs search で探す）`);
+            url = row.url;
+            meta = await library.meta(mo.opts.motion);
+          } else if (url) meta = await getText(url.replace(/\.vrma$/i, '.motion.json')).then(JSON.parse, () => null);
+          if (!url) throw new Error('clip には motion（id）か file を書く');
+          try { mo.state.clip = /\.fbx$/i.test(url) ? await loadMixamo(url, vrm) : await loadVrma(url, vrm); }
+          catch (e) { throw new Error(`${mo.opts.motion ?? mo.opts.file} を読めません（${e.message}）${mo.opts.motion ? `。node src/motions.mjs pull ${mo.opts.motion} で取ってくる` : ''}`); }
+          mo.state.meta = meta;
+          if (meta?.loop) mo.state.loopRange = [meta.loop.in, meta.loop.out];
+          if (meta) mo.state.loop = !!meta.loop;   // ループ区間の無い動きは、既定では1回だけ再生する
+          const st = meta?.allow?.stretch;
+          if (st?.mode === 'none') mo.state.sync = 'time';
+          if (st?.allowHalfDouble === false) mo.state.halfDouble = false;
+          mo.state.info = infoFromMeta(meta, mo.state.clip.duration) ?? analyzeMotion(mo.state.clip, vrm);
+        } else {
+          mo.state.clip = await loadMixamo(res(mo.opts.file), vrm);
+          mo.state.info = analyzeMotion(mo.state.clip, vrm);
+        }
         mo.state.barOffset = ((downbeat0 % 4) + 4) % 4;
+        mo.state.sections = this.sections;
         const { bpm, beats, phase, barPhase, strength, travel } = mo.state.info;
-        this.mixamoInfo.push({ file: mo.opts.file, duration: +mo.state.clip.duration.toFixed(2), bpm: +bpm.toFixed(1), beats, phase: +phase.toFixed(3), barPhase: +barPhase.toFixed(3), strength: +strength.toFixed(2), travel: +travel.toFixed(2) });
+        this.mixamoInfo.push({ file: mo.opts.motion ?? mo.opts.file, meta: !!mo.state.meta, duration: +mo.state.clip.duration.toFixed(2), bpm: +bpm.toFixed(1), beats, phase: +phase.toFixed(3), barPhase: +barPhase.toFixed(3), ...(strength != null ? { strength: +strength.toFixed(2), travel: +travel.toFixed(2) } : {}) });
       }
     }
     this.renderer.compile(this.three, this.camera);

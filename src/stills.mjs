@@ -11,6 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { toUrl, fromUrl, MIME } from './fsurl.mjs';
 import { gpuArgs } from './gpu.mjs';
+import { ensureSceneMotions } from './motions.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -32,6 +33,7 @@ await page.route('http://mv.local/**', route => {
 await page.goto(toUrl(path.join(ROOT, 'runtime/index.html')));
 await page.waitForFunction(() => window.MV_READY);
 const scene = JSON.parse(fs.readFileSync(scenePath, 'utf8'));
+await ensureSceneMotions(scenePath);
 const W = Math.round((scene.width ?? 1280) * scale / 2) * 2, H = Math.round((scene.height ?? 720) * scale / 2) * 2;
 await page.evaluate(([u, w, h]) => window.MV.load(u, { width: w, height: h }), [toUrl(scenePath), W, H]);
 

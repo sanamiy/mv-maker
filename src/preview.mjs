@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startServer, fsPath } from './server.mjs';
+import { ensureSceneMotions } from './motions.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const scene = path.resolve(process.argv[2] || 'examples/demo/scene.json');
@@ -21,6 +22,7 @@ const handlers = {
     req.on('close', () => clients.delete(res));
   },
 };
+await ensureSceneMotions(scene);
 const { port } = await startServer({ port: 5173, handlers }); // 使用中なら次の番号を使う
 console.log(`http://localhost:${port}${fsPath(path.join(ROOT, 'runtime/preview.html'))}?scene=${encodeURIComponent(fsPath(scene))}`);
 
@@ -37,7 +39,8 @@ const ignored = rel => {
 let timer = null;
 const changed = file => {
   clearTimeout(timer); // エディタは1回の保存で何度か書くので、少し待ってまとめる
-  timer = setTimeout(() => {
+  timer = setTimeout(async () => {
+    if (file === scene) await ensureSceneMotions(scene).catch(() => {}); // 新しく書いた動きの id があれば先に取ってくる
     console.log(`変更: ${path.relative(process.cwd(), file)} → 読み込み直します`);
     for (const res of clients) res.write(`event: change\ndata: ${JSON.stringify(path.relative(sceneDir, file))}\n\n`);
     if (file === scene) watchOutside();
