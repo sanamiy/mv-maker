@@ -34,3 +34,6 @@ assets/mixamo/*
 *.pmx
 *.pmd
 assets/cmu/
+
+# 曲ごとの作業フォルダ（曲・歌詞・制作物は各自のもの）
+songs/

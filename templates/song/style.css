@@ -1,0 +1,30 @@
+/* 見せ方はすべてここ。--beat-pulse / --beat-phase / --energy / [data-section] は mv-maker が毎フレーム更新する */
+:root { --main: #8f7aff; --accent: #ff4d8d; --dark: #0b0a1a; }
+
+/* ---------- 背景 ---------- */
+.sky {
+  position: absolute; inset: 0;
+  /* energy が高い区間ほど中心が --accent に寄る。区間ごとに変えたいときは [data-section="chorus"] .sky { ... } と書く */
+  background: radial-gradient(circle at 50% 55%,
+    color-mix(in srgb, var(--accent) calc(clamp(0, var(--energy) - .5, 1) * 100%), #2c2560) 0%, var(--dark) 78%);
+}
+.rings i {
+  position: absolute; left: 50%; top: 55%; width: 1100px; height: 1100px; margin: -550px 0 0 -550px;
+  border-radius: 50%; border: 5px solid rgba(255, 255, 255, .5);
+  scale: calc(.05 + var(--beat-phase) * .95);
+  opacity: calc((1 - var(--beat-phase)) * var(--energy) * .5);
+}
+.rings i:nth-child(2) { scale: calc(.05 + max(0, var(--beat-phase) - .3) * 1.4); border-width: 3px; }
+
+/* ---------- 文字 ---------- */
+.title {
+  position: absolute; top: 8%; width: 100%; margin: 0; text-align: center;
+  font-size: 80px; font-weight: 900; letter-spacing: .04em; text-shadow: 0 0 24px var(--main);
+}
+.credit { position: absolute; bottom: 7%; width: 100%; margin: 0; text-align: center; font-size: 24px; opacity: .85; }
+.lyric {
+  position: absolute; bottom: 9%; width: 100%; margin: 0; text-align: center; font-size: 44px; font-weight: bold;
+  --edge: #1a1440;
+  text-shadow: 3px 0 var(--edge), -3px 0 var(--edge), 0 3px var(--edge), 0 -3px var(--edge),
+               2px 2px var(--edge), -2px 2px var(--edge), 2px -2px var(--edge), -2px -2px var(--edge);
+}

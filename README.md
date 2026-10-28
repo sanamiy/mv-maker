@@ -10,7 +10,7 @@
 
 ## 必要なもの
 
-- Node.js 20 以上
+- Node.js 24 以上（`.nvmrc` あり。`nvm use` で合わせられます）
 - FFmpeg（`ffmpeg` にパスが通っていること）
 - `npx playwright install chromium`（初回のみ）
 
@@ -22,14 +22,30 @@ npx playwright install chromium
 npm run demo        # テスト曲の生成 → サンプルVRM取得 → 解析 → out/demo.mp4
 ```
 
-自分の曲で作るとき:
+## 自分の曲で作る
+
+1曲ごとに `songs/<名前>/` のフォルダを作って、その中で作業します（`songs/` は `.gitignore` 済み）。
+曲ごとにフォルダが分かれているので、複数の曲を同時に作れます（書き出しも並行で動きます）。
 
 ```sh
-node src/analyze.mjs my-song.mp3 my/analysis.json
-node src/render.mjs my/scene.json out/my.mp4
-node src/render.mjs my/scene.json out/quick.mp4 --scale 0.5 --frames 300   # 半分の解像度で先頭10秒だけ
-node src/preview.mjs my/scene.json   # ブラウザで音付きプレビュー（実時間に追従するので本番より粗い）
+node src/new-song.mjs my-song --audio ~/Music/my-song.mp3 --title "曲名" --credit "Music: ..."
+#   → songs/my-song/ に曲のコピー・解析結果・brief.md・scene.json・背景/文字/CSS のひな形ができる
+node src/preview.mjs songs/my-song/scene.json            # ブラウザで音付きプレビュー（空いているポートを自動で使う）
+node src/render.mjs songs/my-song/scene.json songs/my-song/out/test.mp4 --scale 0.5   # 半分の解像度で試し書き
+node src/check.mjs songs/my-song                         # 点検 → out/qa.md と out/contact.png（要所のコマ一覧）
+node src/render.mjs songs/my-song/scene.json songs/my-song/out/final.mp4             # 本番
 ```
+
+エージェントに作ってもらうときの手順と完成の条件は [`.claude/skills/make-mv/SKILL.md`](.claude/skills/make-mv/SKILL.md)
+（入口は [`AGENTS.md`](AGENTS.md)）にあります。
+
+| コマンド | すること |
+|---|---|
+| `src/new-song.mjs <名前> [--audio 曲] [--vrm モデル] [--title] [--credit]` | 1曲ぶんの作業フォルダを作る。曲を渡すと解析して、セクションの下書きも作る |
+| `src/analyze.mjs <曲> <analysis.json>` | 曲を解析する（拍・小節頭・音量・盛り上がり区間） |
+| `src/preview.mjs <scene.json>` | ブラウザで音付きプレビュー |
+| `src/render.mjs <scene.json> <out.mp4> [--scale 0.5] [--frames N]` | mp4 に書き出す |
+| `src/check.mjs <フォルダ> [--video 動画]` | 素材・時刻・セクションの点検と、要所のコマ一覧・QA記録の作成。エラーがあれば終了コード 1 |
 
 ## 書き方
 
@@ -159,7 +175,10 @@ SVG の foreignObject 経由で画像にして canvas に描いています。�
 ```
 src/analyze.mjs      音声 → analysis.json（FFmpegでデコード、スペクトルフラックスでオンセット、自己相関+全体フィットでテンポと拍）
 src/render.mjs       scene.json → mp4（Playwright + FFmpeg）
-src/preview.mjs      ブラウザ確認用のローカルサーバー（127.0.0.1 のみ）
+src/preview.mjs      ブラウザ確認用のローカルサーバー（127.0.0.1 のみ、空きポートを自動で選ぶ）
+src/new-song.mjs     1曲ぶんの作業フォルダを作る
+src/check.mjs        点検（qa.md と contact.png）
+templates/song/      new-song がコピーするひな形
 runtime/player.js    ブラウザ側の描画。frame(i) で i フレーム目を描く
 runtime/layers.js    HTML/CSS のレイヤーを決定的に canvas へ描く
 runtime/mv.css       最初から使えるCSSの部品
