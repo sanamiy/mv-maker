@@ -2,6 +2,7 @@
   "name": "mv-maker",
   "version": "0.1.0",
   "description": "音楽に合わせてVRMキャラが動くMVを書き出す軽量フレームワーク",
+  "license": "MIT",
   "scripts": {
     "demo:song": "node tools/make-test-song.mjs examples/demo/song.wav",
     "demo:vrm": "node tools/fetch-test-vrm.mjs",

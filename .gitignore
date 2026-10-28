@@ -1,6 +1,36 @@
 node_modules/
 out/
-assets/*.vrm
-*.mp4
-examples/demo/song.wav
 .venv/
+.env
+.env.*
+.DS_Store
+
+# 生成物（書き出した動画・確認用の静止画）
+*.mp4
+*.mov
+*.webm
+
+# 曲・歌詞は入れない（デモ曲は npm run demo:song で生成する）
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+lyrics.txt
+
+# キャラクターモデル（各自用意する）
+assets/*.vrm
+*.vrm
+
+# Mixamo の FBX は入れない（カタログとスキーマだけ入れる）
+assets/mixamo/*
+!assets/mixamo/catalog.json
+!assets/mixamo/catalog.schema.json
+
+# 再配布できないモーション素材（CMU mocap・MMD など）
+*.fbx
+*.bvh
+*.vmd
+*.pmx
+*.pmd
+assets/cmu/

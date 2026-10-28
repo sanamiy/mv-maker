@@ -4,23 +4,93 @@
   "fps": 30,
   "audio": "song.wav",
   "analysis": "analysis.json",
-  "background": { "low": "#1d1b3a", "high": "#ff4d8d" },
-  "camera": { "position": [0, 1.3, 2.6], "target": [0, 1.05, 0], "fov": 30, "beatZoom": 0.04, "orbit": 0.3 },
+  "layers": [
+    {
+      "src": "background.html",
+      "place": "back"
+    },
+    {
+      "src": "texts.html",
+      "place": "front"
+    }
+  ],
+  "styles": [
+    "style.css"
+  ],
+  "camera": {
+    "position": [
+      0,
+      1.3,
+      2.6
+    ],
+    "target": [
+      0,
+      1.05,
+      0
+    ],
+    "fov": 30,
+    "beatZoom": 0.04,
+    "orbit": 0.3
+  },
   "character": {
     "vrm": "../../assets/test.vrm",
     "motions": [
-      { "use": "idle" },
-      { "use": "bounce", "amount": 0.03 },
-      { "use": "sway", "amount": 0.07 },
-      { "use": "headNod", "amount": 0.12 },
-      { "use": "armSwing", "amount": 0.45, "liftFrom": 1.0, "lift": 1.4 },
-      { "use": "blink" }
+      {
+        "use": "idle"
+      },
+      {
+        "use": "bounce",
+        "amount": 0.03
+      },
+      {
+        "use": "sway",
+        "amount": 0.07
+      },
+      {
+        "use": "headNod",
+        "amount": 0.12
+      },
+      {
+        "use": "armSwing",
+        "amount": 0.45,
+        "liftFrom": 1.0,
+        "lift": 1.4
+      },
+      {
+        "use": "blink"
+      }
     ]
   },
   "sections": [
-    { "from": 0, "name": "intro", "energy": 0.4, "expression": { "relaxed": 0.5 } },
-    { "from": 7.5, "name": "verse", "energy": 0.8, "expression": {} },
-    { "from": 15, "name": "chorus", "energy": 1.4, "expression": { "happy": 1 } },
-    { "from": 30, "name": "outro", "energy": 0.3, "expression": { "relaxed": 0.7 } }
+    {
+      "from": 0,
+      "name": "intro",
+      "energy": 0.4,
+      "expression": {
+        "relaxed": 0.5
+      }
+    },
+    {
+      "from": 7.5,
+      "name": "verse",
+      "energy": 0.8,
+      "expression": {}
+    },
+    {
+      "from": 15,
+      "name": "chorus",
+      "energy": 1.4,
+      "expression": {
+        "happy": 1
+      }
+    },
+    {
+      "from": 30,
+      "name": "outro",
+      "energy": 0.3,
+      "expression": {
+        "relaxed": 0.7
+      }
+    }
   ]
 }

@@ -1,0 +1,34 @@
+/* mv-maker が自動で読み込む土台のCSS。オーバーレイのHTMLから使える部品もここに置く。 */
+.mv-stage { position: relative; overflow: hidden; margin: 0; font-family: "IPAPGothic", "Noto Sans JP", sans-serif; color: #fff; }
+.mv-stage [data-layer] { position: absolute; inset: 0; }
+.mv-stage [data-mv-hidden] { display: none !important; }
+.mv-stage .mv-ch, .mv-stage .mv-word { display: inline-block; white-space: pre; }
+
+/* ---- 出方（data-start で表示された瞬間から再生される） ---- */
+.fade-in   { animation: mv-fade-in .4s ease-out both; }
+.pop-in    { animation: mv-pop-in .35s cubic-bezier(.2, 1.6, .4, 1) both; }
+.slide-up  { animation: mv-slide-up .45s cubic-bezier(.2, .8, .2, 1) both; }
+.slide-left{ animation: mv-slide-left .45s cubic-bezier(.2, .8, .2, 1) both; }
+.zoom-in   { animation: mv-zoom-in .5s cubic-bezier(.2, .8, .2, 1) both; }
+.blur-in   { animation: mv-blur-in .5s ease-out both; }
+/* data-split="chars" と組み合わせると1文字ずつ（--stagger で間隔を変えられる） */
+.chars-pop  .mv-ch { animation: mv-pop-in .3s cubic-bezier(.2, 1.6, .4, 1) both; animation-delay: calc(var(--i) * var(--stagger, 50ms)); }
+.chars-fade .mv-ch { animation: mv-fade-in .3s ease-out both; animation-delay: calc(var(--i) * var(--stagger, 50ms)); }
+.chars-drop .mv-ch { animation: mv-drop .4s cubic-bezier(.2, 1.4, .4, 1) both; animation-delay: calc(var(--i) * var(--stagger, 50ms)); }
+
+/* ---- 消え方（data-end の --out-dur 秒前から。既定 .3s） ---- */
+.fade-out { opacity: clamp(0, var(--remain) / var(--out-dur, .3), 1); }
+
+/* ---- 拍に合わせて動く（--beat-pulse は拍の頭で1→すぐ0へ） ---- */
+.beat-pulse { scale: calc(1 + var(--beat-pulse) * var(--amount, .12)); }
+.beat-flash { opacity: calc(1 - var(--beat-phase) * var(--amount, .6)); }
+.beat-sway  { rotate: calc(sin(var(--beat) * 3.14159 * 1rad) * var(--amount, 4) * 1deg); }
+.beat-bob   { translate: 0 calc(var(--beat-pulse) * var(--amount, -12) * 1px); }
+
+@keyframes mv-fade-in  { from { opacity: 0; } }
+@keyframes mv-pop-in   { from { opacity: 0; transform: scale(.3); } }
+@keyframes mv-slide-up { from { opacity: 0; transform: translateY(40px); } }
+@keyframes mv-slide-left { from { opacity: 0; transform: translateX(80px); } }
+@keyframes mv-zoom-in  { from { opacity: 0; transform: scale(1.8); } }
+@keyframes mv-blur-in  { from { opacity: 0; filter: blur(16px); } }
+@keyframes mv-drop     { from { opacity: 0; transform: translateY(-60px); } }

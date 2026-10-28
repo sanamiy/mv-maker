@@ -94,9 +94,11 @@ export function analyze(x) {
     let bi = c, bv = -1; for (let k = c - r; k <= c + r; k++) if (onsetEnv[k] > bv) { bv = onsetEnv[k]; bi = k; }
     beats.push(round((bv > 0 ? bi : t) * hopT + T0));
   }
+  // 曲頭の拍がグリッド探索の範囲外で落ちることがあるので、0秒付近まで前に伸ばす
+  while (beats.length && beats[0] - lag * hopT > -0.08) beats.unshift(round(Math.max(0, beats[0] - lag * hopT)));
   // 小節頭: 4拍周期のうちオンセットと低域が最も強い位相
   let dbPhase = 0; best = -1;
-  for (let p = 0; p < 4; p++) { let s = 0; for (let i = p; i < beats.length; i += 4) s += low[Math.round((beats[i] - T0) / hopT)] + broad[Math.round((beats[i] - T0) / hopT)]; if (s > best) { best = s; dbPhase = p; } }
+  for (let p = 0; p < 4; p++) { let s = 0; for (let i = p; i < beats.length; i += 4) { const f = Math.max(0, Math.round((beats[i] - T0) / hopT)); s += low[f] + broad[f]; }; if (s > best) { best = s; dbPhase = p; } }
   const downbeats = beats.filter((_, i) => i % 4 === dbPhase);
   // オンセット（ピーク検出）
   const onN = normalize(Array.from(broad)), onsets = [];
@@ -107,10 +109,9 @@ export function analyze(x) {
   for (let i = 0; i < n; i++) { loud.push(round(sample(rmsN, i), 3)); onset.push(round(sample(onN, i), 3)); }
   // 盛り上がり区間: 小節ごとの音量を3段階に分け、同じ段階の小節をまとめる
   const bars = downbeats.map((t, i) => [t, downbeats[i + 1] ?? duration]);
-  const barE = bars.map(([a, b]) => { let s = 0, c = 0; for (let f = Math.floor((a - T0) / hopT); f < Math.min(frames, (b - T0) / hopT); f++) { s += rms[f]; c++; } return c ? s / c : 0; });
-  const sorted = [...barE].sort((a, b) => a - b), q = p => sorted[Math.floor(p * (sorted.length - 1))];
-  const lo = q(0.33), hi = (q(0.66) + Math.max(...barE)) / 2 * 0.85;
-  const level = e => (e >= hi ? 'high' : e >= lo ? 'mid' : 'low');
+  const barE = bars.map(([a, b]) => { let s = 0, c = 0; for (let f = Math.max(0, Math.floor((a - T0) / hopT)); f < Math.min(frames, (b - T0) / hopT); f++) { s += rms[f]; c++; } return c ? s / c : 0; });
+  const maxE = Math.max(1e-9, ...barE);
+  const level = e => (e >= maxE * 0.8 ? 'high' : e >= maxE * 0.5 ? 'mid' : 'low');
   const segments = [];
   if (bars.length && bars[0][0] > 0.05) segments.push({ start: 0, end: bars[0][0], level: 'low' });
   bars.forEach(([a, b], i) => {

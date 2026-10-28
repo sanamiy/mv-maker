@@ -6,6 +6,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { buildSections, musicAt } from './timeline.js';
 import { behaviors } from './behaviors.js';
+import { HtmlLayers } from './layers.js';
 
 const BG_VERT = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 1.0, 1.0); }`;
 const BG_FRAG = `
@@ -55,7 +56,8 @@ class Player {
     this.camCfg = { position: [0, 1.35, 2.4], target: [0, 1.15, 0], fov: 30, beatZoom: 0.04, orbit: 0.25, ...cam };
     this.camera = new THREE.PerspectiveCamera(this.camCfg.fov, this.width / this.height, 0.1, 50);
 
-    // 背景（画面全体を覆う板。深度は書かない）
+    // 組み込みのシェーダー背景（scene.background を書いたときだけ）。HTMLで背景を書くなら不要
+    this.useShaderBg = !!S.background;
     const bg = S.background || {};
     this.bgUniforms = {
       uTime: { value: 0 }, uBeat: { value: 0 }, uPulse: { value: 0 }, uEnergy: { value: 1 },
@@ -67,6 +69,35 @@ class Player {
     bgMesh.frustumCulled = false;
     this.bgScene.add(bgMesh);
     this.bgCamera = new THREE.Camera();
+
+    // HTML/CSS のレイヤー（背景・文字・図）。place: "back" はキャラの後ろ、"front" は手前
+    this.html = null;
+    if (S.layers?.length) {
+      this.html = new HtmlLayers();
+      const sceneW = S.width ?? 1280, sceneH = S.height ?? 720;
+      await this.html.load({
+        layers: S.layers, styles: S.styles, baseUrl: sceneUrl, runtimeCss: new URL('./mv.css', import.meta.url).href,
+        width: sceneW, height: sceneH, outWidth: this.width, outHeight: this.height,
+        ctx: { analysis: this.analysis, sections: this.sections, duration: this.duration },
+      });
+      this.overlay = { back: new THREE.Scene(), front: new THREE.Scene() };
+      for (const l of this.html.layers) {
+        l.texture = new THREE.CanvasTexture(l.canvas);
+        l.texture.colorSpace = THREE.NoColorSpace; // 変換せずそのまま出す
+        l.texture.minFilter = l.texture.magFilter = THREE.LinearFilter;
+        l.texture.generateMipmaps = false;
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+          uniforms: { map: { value: l.texture } },
+          vertexShader: BG_VERT,
+          // canvas の色は sRGB のまま出力したいので、three の色変換を通さずそのまま書く
+          fragmentShader: 'uniform sampler2D map; varying vec2 vUv; void main(){ gl_FragColor = texture2D(map, vUv); }',
+          transparent: true, depthWrite: false, depthTest: false,
+        }));
+        mesh.frustumCulled = false;
+        mesh.renderOrder = this.overlay[l.place === 'back' ? 'back' : 'front'].children.length;
+        this.overlay[l.place === 'back' ? 'back' : 'front'].add(mesh);
+      }
+    }
 
     // 床（拍で光る円盤）
     this.floorMat = new THREE.MeshStandardMaterial({ color: 0x222233, emissive: new THREE.Color(bg.high ?? '#ff4d8d'), emissiveIntensity: 0, roughness: 0.6 });
@@ -103,7 +134,7 @@ class Player {
   }
 
   // フレーム i を描く。SpringBone などの物理は前フレームからの積み上げなので、必ず 0 から順に呼ぶ。
-  frame(i) {
+  async frame(i) {
     if (i !== this.next) throw new Error(`frames must be sequential: expected ${this.next}, got ${i}`);
     this.next++;
     const dt = 1 / this.fps, t = i * dt;
@@ -134,9 +165,18 @@ class Player {
     this.floorMat.emissiveIntensity = m.beatPulse * 0.6 * m.energy;
     this.key.intensity = 2.0 + m.beatPulse * 0.6 * m.energy;
 
+    if (this.html) {
+      await this.html.update(m);
+      for (const l of this.html.layers) if (l.dirty) { l.texture.needsUpdate = true; l.dirty = false; }
+    }
+
+    this.renderer.setClearColor(this.scene.clearColor ?? '#000000', 1);
     this.renderer.clear();
-    this.renderer.render(this.bgScene, this.bgCamera);
+    if (this.useShaderBg) this.renderer.render(this.bgScene, this.bgCamera);
+    if (this.overlay) this.renderer.render(this.overlay.back, this.bgCamera);
+    this.renderer.clearDepth();
     this.renderer.render(this.three, this.camera);
+    if (this.overlay) this.renderer.render(this.overlay.front, this.bgCamera);
     return m;
   }
 
@@ -154,7 +194,7 @@ class Player {
   // 書き出し用: n フレーム進めて、まとめて base64 で返す（往復回数を減らすため）
   async renderBatch(start, n) {
     const parts = [];
-    for (let i = start; i < Math.min(start + n, this.frameCount); i++) { this.frame(i); parts.push(new Blob([this.pixels()])); }
+    for (let i = start; i < Math.min(start + n, this.frameCount); i++) { await this.frame(i); parts.push(new Blob([this.pixels()])); }
     const url = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(new Blob(parts)); });
     return url.slice(url.indexOf(',') + 1);
   }

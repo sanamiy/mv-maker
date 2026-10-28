@@ -11,11 +11,11 @@ Object.assign(hint.style, { position: 'fixed', left: '12px', bottom: '12px', col
 document.body.append(hint);
 addEventListener('click', () => (audio.paused ? audio.play() : audio.pause()));
 addEventListener('keydown', e => { if (e.key === 'ArrowRight') audio.currentTime += 5; if (e.key === 'ArrowLeft') audio.currentTime -= 5; });
-window.MV.frame(0);
-(function loop() {
+await window.MV.frame(0);
+(async function loop() {
   const target = Math.min(info.frameCount - 1, Math.floor(audio.currentTime * info.fps));
   const mv = window.MV;
   if (target < mv.next - 1 || target - mv.next > 15) mv.jump(target);
-  while (mv.next <= target) mv.frame(mv.next);
+  while (mv.next <= target) await mv.frame(mv.next);
   requestAnimationFrame(loop);
 })();
