@@ -47,3 +47,11 @@ for f in sorted(glob.glob(sys.argv[1] + '/Sequence-*/*/README.md')):
 json.dump(rows, open(sys.argv[2], 'w'), ensure_ascii=False)
 EOF
 node "$HERE/catalog.mjs" "$OUT" "$WORK/cmu-index.json"
+
+# 回転を 16bit にして容量を約半分にする（まだ float のものだけ）
+node --input-type=module -e '
+import fs from "node:fs"; import path from "node:path";
+const { quantizeVRMA } = await import(process.argv[1]);
+const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith(".vrma") ? [path.join(d, e.name)] : []);
+for (const f of walk(process.argv[2])) { const b = fs.readFileSync(f); if (b.includes("\"normalized\":true")) continue; fs.writeFileSync(f, quantizeVRMA(b)); }
+' "$HERE/quantize.mjs" "$OUT"

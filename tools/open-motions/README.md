@@ -17,6 +17,7 @@ tools/open-motions/build.sh ~/open-motions-work 4   # 作業フォルダ, 並列
 | `build.sh` | 元データの取得 → 変換 → 一覧づくりをまとめて行う |
 | `cmu2vrma.mjs` | CMU の BVH 1本 → VRMA と解析値 |
 | `quaternius2vrma.mjs` | Quaternius の GLB（全モーション入り）→ モーションごとの VRMA と解析値 |
+| `quantize.mjs` | 回転を 16bit 整数にして容量を約半分にする（見た目はほぼ変わらない） |
 | `vrma.mjs` | VRM 正規化ボーンの回転列を VRMA（glTF + `VRMC_vrm_animation`）に書き出す |
 | `analyze.mjs` | 移動・回転・手足の動き・拍・ループ可否などの解析値 |
 | `catalog.mjs` | 解析値と元の説明文から `catalog.jsonl` / `catalog.csv` を作る |
