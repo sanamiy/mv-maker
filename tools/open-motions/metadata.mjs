@@ -48,14 +48,14 @@ const SOURCES = {
 const KIND = [
   ['dance', /danc|salsa|charleston|charelston|ballet|pirouette|arabesque|jete|breakdance|break ?dance|helicopter|fancyfootwork|lambada|bollywood|indian|twist dance|moonwalk|jackson|chicken dance|disco|jig|^dance_loop$/i],
   ['acrobatics', /cartwheel|flip|summersult|somersault|hand ?spring|handstand|acrobat/i],
-  ['gesture', /wave|waving|clap|cheer|point|bow|salute|shrug|nod|^yes$|idle_no|hand signal|gesture|beckon|talk|phone|applaud|conduct|direct traffic|signal/i],
+  ['gesture', /wave|waving|clap|cheer|point|bow|salute|shrug|nod|^yes$|idle_no|hand signal|gesture|beckon|talk|phone|applaud|conduct|direct traffic|signal|nursery rhyme|teapot|peek ?a ?boo|laugh|cry|scared|happy|sad|angry|curtsey|mope|surprised|emotion|pantomime|story|communication/i],
   ['sit', /sit|sitting|kneel|lay|lie down|seat/i],
   ['jump', /jump|hop|leap/i],
   ['run', /run|jog|sprint/i],
   ['walk', /walk|march|wander|stroll|step|strut|navigate|stairs|tiptoe/i],
   ['idle', /idle|stand|wait|breath|look around|fold ?arms|foldarms/i],
-  ['sports', /basketball|soccer|kick ball|golf|tennis|swim|swing|boxing|box |punch|kick|throw|catch|baseball|football|stretch|exercise|jumping jacks|squat|yoga|tai chi/i],
-  ['action', /sword|pistol|shoot|spell|attack|hit|death|fight|melee|shield|zombie|dash|slide|climb|push|pull|pick ?up|carry|chop|farm|harvest|drive|roll|crouch|throw|interact|consume|drink|eat|open|lift|wash|paint|sweep/i],
+  ['sports', /basketball|soccer|kick ball|golf|putt|tee|tennis|swim|stroke|swing|boxing|box |punch|kick|throw|catch|baseball|football|frisbee|stretch|exercise|jumping jacks|squat|yoga|tai chi|range of motion|martial|karate|empi|fishing/i],
+  ['action', /get up|getting up|limp|sneak|motorcycle|sword|pistol|shoot|spell|attack|hit|death|fight|melee|shield|zombie|dash|slide|climb|push|pull|pick ?up|carry|chop|farm|harvest|drive|roll|crouch|throw|interact|consume|drink|eat|open|lift|wash|paint|sweep/i],
 ];
 const GENRE = [
   ['salsa', /salsa/i], ['charleston', /charleston|charelston/i], ['modern', /modern|arabesque|pirouette|jete|glissade|rond de jambe|retire|tendue|coupe/i],
@@ -79,7 +79,8 @@ function build(src, a) {
     name = a.id.replace(/^ual[12]_/, ''); description = name.replace(/_RM$/, ' (root motion)').replace(/_/g, ' ');
     kindText = name;
   }
-  const kind = pick(KIND, kindText)[0] ?? 'other';
+  // 説明文で決まらなければ（"clean" "unknown" など）、カテゴリ名で決める
+  const kind = pick(KIND, kindText)[0] ?? pick(KIND, keywords.join(' '))[0] ?? 'other';
   const D = a.duration;
   const travelPerSec = a.travel.path / Math.max(D, 0.1);
   const locomotion = Math.abs(a.turnDeg) >= 300 && a.travel.net < 1 ? 'spinning' : a.travel.net > 1.2 || travelPerSec > 0.6 ? 'traveling' : a.travel.path > 0.4 ? 'stepping' : 'in-place';
@@ -89,7 +90,9 @@ function build(src, a) {
 
   // 接地 → contact / lift と footLock
   const events = [], ranges = [];
-  for (const side of ['left', 'right']) for (const [from, to] of a.contacts?.[side] ?? []) {
+  const clamp = t => Math.min(t, D);  // 解析値の時刻（3桁）が duration（2桁に丸め）をわずかに超えることがある
+  for (const side of ['left', 'right']) for (let [from, to] of a.contacts?.[side] ?? []) {
+    from = clamp(from); to = clamp(to);
     if (from > 0) events.push({ t: from, type: 'contact', side });
     if (to < D - 1e-6) events.push({ t: to, type: 'lift', side });
     if (to - from >= 0.05) ranges.push({ from, to, type: 'footLock', side });
@@ -131,7 +134,7 @@ for (const src of Object.keys(SOURCES)) {
     const vrma = `${SOURCES[src].dir}/${base}.vrma`;
     if (!fs.existsSync(path.join(DIR, vrma))) { console.error('VRMA が無い:', vrma); bad++; continue; }
     const errs = check ? check(m) : [];
-    if (errs.length) { console.error('NG', m.id, errs.join(' / ')); bad++; continue; }
+    if (errs.length) { console.error('除外（仕様の検証に通らない）:', m.id, errs.join(' / ')); fs.rmSync(path.join(DIR, vrma), { force: true }); bad++; continue; }
     fs.writeFileSync(path.join(DIR, vrma.replace(/\.vrma$/, '.motion.json')), JSON.stringify(m, null, 1) + '\n');
     rows.push({ file: vrma, m });
   }
