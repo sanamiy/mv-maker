@@ -85,6 +85,10 @@ node src/check.mjs songs/<名前> --video songs/<名前>/out/test.mp4
 
 ### 8. 本番を書き出す
 
+**クラウドの環境（GPU無し）では本番を書き出さない。** SwiftShader だと 720p・2分半の曲で約1時間かかる（P(Doom) で 1.2fps）。
+クラウドでは静止画の一覧（`src/stills.mjs`）と、`--scale 0.5 --frames` での短い試し書きまでにし、
+本番は依頼者の Mac で `--gl metal` を付けて書き出す（10倍ほど速い）。Mac に頼めないときは、書き出す前に依頼者に聞く。
+
 ```sh
 node src/render.mjs songs/<名前>/scene.json songs/<名前>/out/final.mp4
 node src/check.mjs songs/<名前>
