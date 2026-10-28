@@ -129,8 +129,12 @@ export class HtmlLayers {
     return this.layers;
   }
 
+  // アニメーションの開始時刻の記録を消す（プレビューで飛んだとき、Player.replayHtml が記録し直す）
+  reset() { for (const l of this.layers) for (const a of l.all) { a.anim = null; a.origin = 0; } }
+
   // m: musicAt() の結果。終わると各レイヤーの canvas が最新になる（変化が無ければ描き直さない）
-  async update(m) {
+  // draw: false ならアニメーションの状態だけ進めて、canvas には描かない
+  async update(m, draw = true) {
     const t = m.t, st = this.stage;
     const vars = {
       '--t': t, '--beat': m.beatPos, '--beat-phase': m.beatPhase, '--beat-pulse': m.beatPulse, '--beat-index': m.beatIndex,
@@ -169,6 +173,7 @@ export class HtmlLayers {
         a.el.style.animationPlayState = 'paused';
       });
       // 4) SVG 画像にして描く
+      if (!draw) { l.last = ''; continue; }
       const body = new XMLSerializer().serializeToString(l.root);
       const xml = `<div xmlns="${XHTML}" class="mv-stage" data-section="${esc(st.dataset.section)}" style="${esc(st.getAttribute('style'))}">${this.styleXml}${body}</div>`;
       if (xml === l.last) continue;

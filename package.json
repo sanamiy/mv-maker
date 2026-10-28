@@ -9,13 +9,19 @@
     "analyze": "node src/analyze.mjs",
     "render": "node src/render.mjs",
     "preview": "node src/preview.mjs",
-    "demo": "npm run demo:song && npm run demo:vrm && node src/analyze.mjs examples/demo/song.wav examples/demo/analysis.json && node src/render.mjs examples/demo/scene.json out/demo.mp4"
+    "demo": "npm run demo:song && npm run demo:vrm && node src/analyze.mjs examples/demo/song.wav examples/demo/analysis.json && node src/render.mjs examples/demo/scene.json out/demo.mp4",
+    "new-song": "node src/new-song.mjs",
+    "check": "node src/check.mjs"
   },
   "dependencies": {
     "@pixiv/three-vrm": "^3.5.5",
+    "@pixiv/three-vrm-animation": "^3.5.5",
     "playwright": "^1.63.0",
     "three": "^0.186.1"
   },
   "type": "module",
-  "private": true
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  }
 }
