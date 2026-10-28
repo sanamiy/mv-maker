@@ -66,6 +66,13 @@ const pick = (rules, text) => rules.filter(([, re]) => re.test(text)).map(([k]) 
 const slug = s => s.toLowerCase().replace(/[^a-z0-9_.-]+/g, '-').replace(/^-+|-+$/g, '');
 const energyOf = e => (e < 0.15 ? 1 : e < 0.4 ? 2 : e < 0.8 ? 3 : e < 1.3 ? 4 : 5);
 
+const m_id = (src, name) => slug(`${src}_${name}`);
+// 崩れないことを目で確かめたもの（VRM1 のサンプル・まる・オオモフ）
+const CHECKED = {
+  cmu_60_01: ['vrm1-sample', 'maru', 'oomofu'], cmu_05_02: ['vrm1-sample'], cmu_85_12: ['vrm1-sample'],
+  ual1_dance_loop: ['vrm1-sample'], ual1_walk_loop: ['vrm1-sample'], ual2_idle_foldarms_loop: ['vrm1-sample'], ual2_idle_talkingphone_loop: ['vrm1-sample'],
+};
+
 function build(src, a) {
   const S = SOURCES[src];
   let name, description, kindText, keywords = [];
@@ -86,6 +93,11 @@ function build(src, a) {
   const locomotion = Math.abs(a.turnDeg) >= 300 && a.travel.net < 1 ? 'spinning' : a.travel.net > 1.2 || travelPerSec > 0.6 ? 'traveling' : a.travel.path > 0.4 ? 'stepping' : 'in-place';
   const upper = a.angularSpeed.legs < 0.35 * a.angularSpeed.arms && a.angularSpeed.legs < 0.6 && a.airborne < 0.02 && locomotion === 'in-place';
   const loopable = a.loopPoseDiffDeg <= 10 && a.travel.net < 0.3 && D >= 0.5;
+  // 主に動く部位: 動きの割合が 25% 以上の部位。腕と脚の両方なら full
+  let parts = Object.entries(a.bodyShare ?? {}).filter(([, v]) => v >= 0.25).map(([k]) => k);
+  if (upper) parts = parts.filter(p => p !== 'legs' && p !== 'hips');
+  if (!parts.length) parts = upper ? ['arms'] : ['full'];
+  if (parts.includes('legs') && (parts.includes('arms') || !upper)) parts = ['full'];
   const confident = a.bpm != null && a.beatConfidence >= 0.3;
 
   // 接地 → contact / lift と footLock
@@ -101,25 +113,28 @@ function build(src, a) {
 
   const m = {
     specVersion: '0.1',
-    id: slug(`${src}_${name}`),
+    id: m_id(src, name),
     name, description, duration: D,
     ...(S.sourceFps ? { sourceFps: S.sourceFps } : {}),
     license: S.license(src === 'cmu' ? a.id : name),
     tags: {
       kind, genre: kind === 'dance' ? pick(GENRE, `${description} ${keywords.join(' ')} ${name}`) : [],
-      energy: energyOf(a.energy), bodyParts: upper ? 'upper' : 'full', locomotion,
+      energy: energyOf(a.energy), bodyParts: parts, locomotion, facing: a.facing,
       floorWork: a.lowHips > 0.2, airborne: a.airborne > 0.1,
       fingers: src !== 'cmu', expressions: false, lookAt: false,
       rootMotion: src === 'cmu' || /_RM$/.test(name),
       ...(keywords.length ? { keywords } : {}),
     },
     tempo: confident ? { bpm: a.bpm, beatsPerBar: 4, firstBeat: Math.min(a.firstBeat ?? 0, D), confidence: a.beatConfidence } : { bpm: null, confidence: a.beatConfidence ?? 0 },
-    ...(loopable ? { loop: { in: 0, out: D, mode: 'cycle', blend: +Math.min(0.1, D / 4).toFixed(3) } } : {}),
+    ...(loopable ? { loop: { in: 0, out: D, mode: 'cycle', blend: +Math.min(0.1, D / 4).toFixed(3), ...(confident ? { beats: Math.max(1, Math.round(D * a.bpm / 60)) } : {}), poseDiffDeg: a.loopPoseDiffDeg } } : {}),
     ...(kind === 'dance' && confident && a.beatConfidence >= 0.5 ? { allow: { stretch: { mode: 'beats' } } } : {}),
     ...(events.length ? { events } : {}),
     ...(ranges.length ? { ranges } : {}),
+    root: a.root,
+    poses: a.poses,
+    retarget: { restPose: 'T', sourceHipHeight: a.hipHeight, floorAligned: true, ...(CHECKED[m_id(src, name)] ? { checkedOn: CHECKED[m_id(src, name)] } : {}) },
     provenance: { tags: 'auto', tempo: 'auto', events: 'auto', ranges: 'auto' },
-    x: { openMotions: { travel: a.travel, turnDeg: a.turnDeg, angularSpeed: a.angularSpeed, energy: a.energy, airborne: a.airborne, lowHips: a.lowHips, loopPoseDiffDeg: a.loopPoseDiffDeg, hipHeight: a.hipHeight } },
+    x: { openMotions: { pathTravel: a.travel.path, angularSpeed: a.angularSpeed, bodyShare: a.bodyShare, energy: a.energy, airborne: a.airborne, lowHips: a.lowHips } },
   };
   return m;
 }
@@ -144,19 +159,20 @@ for (const src of Object.keys(SOURCES)) {
 const flat = ({ file, m }) => ({
   id: m.id, file, name: m.name, description: m.description, duration: m.duration,
   license: m.license.spdx, attribution: m.license.attribution,
-  kind: m.tags.kind, genre: m.tags.genre, energy: m.tags.energy, bodyParts: m.tags.bodyParts, locomotion: m.tags.locomotion,
-  floorWork: m.tags.floorWork, airborne: m.tags.airborne, fingers: m.tags.fingers, rootMotion: m.tags.rootMotion,
+  ...m.tags,
   bpm: m.tempo?.bpm ?? null,
   tempoBand: m.tempo?.bpm == null ? null : m.tempo.bpm < 90 ? 'slow' : m.tempo.bpm <= 120 ? 'mid' : 'fast',
-  loopable: !!m.loop, hasTiming: !!(m.events?.length || m.ranges?.length),
+  loopable: !!m.loop, loopBeats: m.loop?.beats ?? null, hasTiming: !!(m.events?.length || m.ranges?.length),
+  travel: m.root?.netTravel ?? null, turnDeg: m.root?.netTurnDeg ?? null, startPose: m.poses?.start ?? null, endPose: m.poses?.end ?? null,
 });
 const flatRows = rows.map(flat);
 fs.writeFileSync(path.join(DIR, 'catalog.jsonl'), flatRows.map(r => JSON.stringify(r)).join('\n') + '\n');
-const cols = Object.keys(flatRows[0]);
+// タグは動きによって有無が違うので、全行の列を集める
+const cols = [...new Set(flatRows.flatMap(r => Object.keys(r)))];
 const esc = v => { const s = Array.isArray(v) ? v.join(';') : v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 fs.writeFileSync(path.join(DIR, 'catalog.csv'), [cols.join(','), ...flatRows.map(r => cols.map(c => esc(r[c])).join(','))].join('\n') + '\n');
 
 const count = k => Object.entries(flatRows.reduce((acc, r) => { for (const x of [].concat(r[k])) acc[x] = (acc[x] || 0) + 1; return acc; }, {})).sort((a, b) => b[1] - a[1]);
 console.log(flatRows.length, 'motions', (flatRows.reduce((s, r) => s + r.duration, 0) / 3600).toFixed(2), 'h', bad ? `（${bad}本は除外）` : '');
-for (const k of ['license', 'kind', 'genre', 'energy', 'tempoBand', 'bodyParts', 'locomotion', 'loopable', 'hasTiming']) console.log(k, JSON.stringify(count(k)));
+for (const k of ['license', 'kind', 'genre', 'energy', 'tempoBand', 'bodyParts', 'locomotion', 'facing', 'loopable', 'hasTiming', 'startPose']) console.log(k, JSON.stringify(count(k)));
 process.exit(bad && !flatRows.length ? 1 : 0);

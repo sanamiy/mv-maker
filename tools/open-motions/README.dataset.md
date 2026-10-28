@@ -68,17 +68,21 @@ hf download {{REPO}} --repo-type dataset --include "cmu/60_*.vrma"   # 必要な
 | `tags.kind` | dance / idle / walk / run / jump / gesture / sit / sports / acrobatics / action / other。元の説明文・名前のキーワードから |
 | `tags.genre` | ダンスのジャンル（salsa / charleston / modern / indian / breakdance / lambada / pop / chicken-dance / casual） |
 | `tags.energy` | 1 ほぼ静止 ～ 5 全身で激しい（手足と頭の平均の速さから） |
-| `tags.bodyParts` | full / upper（脚がほぼ動かず、その場で上半身だけ動くもの） |
+| `tags.bodyParts` | 主に動く部位の配列（head / torso / arms / hands / hips / legs / full） |
+| `tags.facing` | front / side / back / turning（主にどちらを向いているか） |
 | `tags.locomotion` | in-place / stepping / traveling / spinning |
 | `tags.floorWork`, `tags.airborne` | 腰を低く落とす時間が長い／両足が浮く時間が長い |
 | `tags.fingers` | 指の動きを含む（Quaternius のみ） |
 | `tags.rootMotion` | 腰の移動を含む（CMU は全部、Quaternius は `_RM` 付きのもの） |
 | `tempo` | 動きの周期から推定した拍（`bpm`・`firstBeat`・`confidence`）。周期がはっきりしなければ `bpm: null` |
-| `loop` | 最初と最後のポーズが近いものだけ。無いものはループさせない |
+| `loop` | 最初と最後のポーズが近いものだけ（`poseDiffDeg`、拍が分かれば `beats`）。無いものはループさせない |
+| `root` | 腰の移動と向き（`netTravel` `maxTravel` は腰の高さ倍、`netTurnDeg` `turnRangeDeg`、`hipsBounce`） |
+| `poses` | 最初と最後の姿勢・軸足・腕の位置（前後の動きをつなぐときに使う） |
+| `retarget` | 元データの基準姿勢（T）、床合わせ済みか、目で確かめた VRM（`checkedOn`） |
 | `events` / `ranges` | 足の接地・離地（`contact` / `lift`）と、足を固定してよい区間（`footLock`） |
 | `x.openMotions` | タグの元になった解析値 |
 
-一覧（catalog）の列は `id, file, name, description, duration, license, attribution, kind, genre, energy, bodyParts, locomotion, floorWork, airborne, fingers, rootMotion, bpm, tempoBand, loopable, hasTiming` です。
+一覧（catalog）の列は `id, file, name, description, duration, license, attribution` と `tags` の全項目、`bpm, tempoBand, loopable, loopBeats, hasTiming, travel, turnDeg, startPose, endPose` です。
 
 タグ・拍・接地はすべて自動推定で（`provenance` が `auto`）、間違いを含みます。特に `bpm` は音楽ではなく動きから推定した値です。
 

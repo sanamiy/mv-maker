@@ -60,7 +60,7 @@ for (const clip of gltf.animations) {
   const frameCount = Math.max(2, Math.round(clip.duration * fps) + 1);
   const rot = Object.fromEntries(names.map(n => [n, new Float32Array(frameCount * 4)]));
   const hipsPos = new Float32Array(frameCount * 3);
-  const track = { hips: [], head: [], leftHand: [], rightHand: [], leftFoot: [], rightFoot: [], leftToe: [], rightToe: [] };
+  const track = { hips: [], head: [], leftHand: [], rightHand: [], leftFoot: [], rightFoot: [], leftToe: [], rightToe: [], leftUpperArm: [], rightUpperArm: [] };
   for (let i = 0; i < frameCount; i++) {
     at(clip, Math.min(clip.duration, i / fps));
     const delta = Object.fromEntries(names.map(n => [n, wq(n).multiply(restInv[n])]));
@@ -69,7 +69,7 @@ for (const clip of gltf.animations) {
       (p ? delta[p].clone().invert().multiply(delta[n]) : delta[n]).toArray(rot[n], i * 4);
     }
     wp('hips').sub(center).toArray(hipsPos, i * 3);
-    for (const k of ['hips', 'head', 'leftHand', 'rightHand', 'leftFoot', 'rightFoot']) track[k].push(wp(k).sub(center).toArray());
+    for (const k of ['hips', 'head', 'leftHand', 'rightHand', 'leftFoot', 'rightFoot', 'leftUpperArm', 'rightUpperArm']) track[k].push(wp(k).sub(center).toArray());
     track.leftToe.push(tip('leftToes').sub(center).toArray()); track.rightToe.push(tip('rightToes').sub(center).toArray());
   }
   for (const n of names) continuous(rot[n]);

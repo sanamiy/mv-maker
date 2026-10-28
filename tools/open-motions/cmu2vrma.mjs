@@ -36,7 +36,7 @@ const fps = +fpsS, start = dt, end = clip.duration;
 const frameCount = Math.floor((end - start) * fps + 1e-6) + 1;
 const rot = Object.fromEntries(names.map(n => [n, new Float32Array(frameCount * 4)]));
 const hipsPos = new Float32Array(frameCount * 3);
-const track = { hips: [], head: [], leftHand: [], rightHand: [], leftFoot: [], rightFoot: [], leftToe: [], rightToe: [] };
+const track = { hips: [], head: [], leftHand: [], rightHand: [], leftFoot: [], rightFoot: [], leftToe: [], rightToe: [], leftUpperArm: [], rightUpperArm: [] };
 for (let i = 0; i < frameCount; i++) {
   pose(start + i / fps);
   const delta = Object.fromEntries(names.map(n => [n, wq(n).multiply(restInv[n])]));
@@ -46,7 +46,7 @@ for (let i = 0; i < frameCount; i++) {
     q.toArray(rot[n], i * 4);
   }
   wp('hips').sub(center).toArray(hipsPos, i * 3);
-  for (const k of ['hips', 'head', 'leftHand', 'rightHand', 'leftFoot', 'rightFoot']) track[k].push(wp(k).sub(center).toArray());
+  for (const k of ['hips', 'head', 'leftHand', 'rightHand', 'leftFoot', 'rightFoot', 'leftUpperArm', 'rightUpperArm']) track[k].push(wp(k).sub(center).toArray());
   track.leftToe.push(endSite('leftToes').sub(center).toArray());
   track.rightToe.push(endSite('rightToes').sub(center).toArray());
 }

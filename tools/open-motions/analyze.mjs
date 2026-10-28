@@ -47,6 +47,27 @@ function contacts(toe, fps) {
   return spans;
 }
 
+// 1コマの姿勢: 腰の高さ・接地・腕の位置から、つなぎ目で比べるための分類をする
+function poseAt(track, i, h, yawRad) {
+  const lt = track.leftToe[i][1] < 0.06 || track.leftFoot[i][1] < 0.14, rt = track.rightToe[i][1] < 0.06 || track.rightFoot[i][1] < 0.14;
+  const hy = track.hips[i][1] / h;
+  const pose = !lt && !rt && hy > 0.95 ? 'air' : hy > 0.85 ? 'stand' : hy > 0.55 ? 'crouch' : track.head[i][1] / h < 0.6 ? (hy < 0.3 ? 'lie' : 'floor') : hy < 0.4 ? 'sit' : 'kneel';
+  const support = lt && rt ? 'both' : lt ? 'left' : rt ? 'right' : 'none';
+  // 腕: 体の向きにそろえた座標で、手が肩より上・前・横・腰のそば・下のどれか
+  const c = Math.cos(-yawRad), s = Math.sin(-yawRad), hip = track.hips[i];
+  const local = p => { const x = p[0] - hip[0], z = p[2] - hip[2]; return [x * c + z * s, p[1], -x * s + z * c]; };
+  const arm = side => {
+    const hand = local(track[`${side}Hand`][i]), sh = local(track[`${side}UpperArm`][i]);
+    if (hand[1] > sh[1] + 0.1 * h) return 'up';
+    if (Math.abs(hand[0]) - Math.abs(sh[0]) > 0.35 * h) return 'wide';
+    if (hand[2] > 0.3 * h) return 'front';
+    if (Math.abs(hand[1] - hip[1]) < 0.15 * h && Math.abs(hand[0]) < 0.35 * h && Math.abs(hand[2]) < 0.2 * h) return 'hips';
+    return 'down';
+  };
+  const l = arm('left'), r = arm('right');
+  return { pose, support, arms: l === r ? l : 'other' };
+}
+
 export function analyze({ fps, frameCount: n, rot, bones, track, hipRest }) {
   const h = hipRest;
   const hip = track.hips;
@@ -64,6 +85,23 @@ export function analyze({ fps, frameCount: n, rot, bones, track, hipRest }) {
   const energy = sig.reduce((a, b) => a + b, 0) / (sig.length || 1) / ends.length;
   let air = 0, low = 0;
   for (let i = 0; i < n; i++) { if (track.leftToe[i][1] > 0.08 && track.rightToe[i][1] > 0.08) air++; if (hip[i][1] < h * 0.6) low++; }
+  // 腰の水平移動の最大・向きの振れ幅・上下の振れ幅（すべて腰の高さ倍か度）
+  let maxTravel = 0; for (let i = 0; i < n; i++) maxTravel = Math.max(maxTravel, Math.hypot(hip[i][0] - hip[0][0], hip[i][2] - hip[0][2]));
+  let cum = 0, cmin = 0, cmax = 0, pv = yaw(0); for (let i = 1; i < n; i++) { let d = yaw(i) - pv; d = Math.atan2(Math.sin(d), Math.cos(d)); cum += d; pv = yaw(i); cmin = Math.min(cmin, cum); cmax = Math.max(cmax, cum); }
+  const hys = hip.map(p => p[1]).sort((a, b) => a - b); const pct = q => hys[Math.min(n - 1, Math.floor(q * (n - 1)))];
+  // 向き: +Z（正面）からのずれ。大きく回るなら turning
+  let front = 0, side = 0, back = 0; for (let i = 0; i < n; i++) { const d = Math.abs(yaw(i)) * 180 / Math.PI; if (d < 45) front++; else if (d < 135) side++; else back++; }
+  const facing = (cmax - cmin) * 180 / Math.PI > 180 ? 'turning' : front >= side && front >= back ? 'front' : side >= back ? 'side' : 'back';
+  // 部位ごとの動きの割合
+  const share = {
+    head: angSpeed(rot, ['neck', 'head'], fps, n), torso: angSpeed(rot, ['spine', 'chest', 'upperChest'], fps, n),
+    arms: angSpeed(rot, ['leftShoulder', 'rightShoulder', 'leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm'], fps, n),
+    hands: angSpeed(rot, bones.filter(b => /Hand$|Thumb|Index|Middle|Ring|Little/.test(b)), fps, n),
+    hips: angSpeed(rot, ['hips'], fps, n), legs: angSpeed(rot, ['leftUpperLeg', 'rightUpperLeg', 'leftLowerLeg', 'rightLowerLeg', 'leftFoot', 'rightFoot'], fps, n),
+  };
+  const tot = Object.values(share).reduce((a, b) => a + b, 0) || 1;
+  for (const k in share) share[k] = r2(share[k] / tot);
+  const p0 = poseAt(track, 0, h, yaw(0)), p1 = poseAt(track, n - 1, h, yaw(n - 1));
   let loopDiff = 0, cnt = 0; for (const b of bones) if (rot[b] && b !== 'hips') { loopDiff += ang(rot[b], 0, (n - 1) * 4); cnt++; }
   loopDiff = loopDiff / cnt * 180 / Math.PI;
   return {
@@ -75,6 +113,9 @@ export function analyze({ fps, frameCount: n, rot, bones, track, hipRest }) {
     airborne: r2(air / n), lowHips: r2(low / n),
     loopPoseDiffDeg: Math.round(loopDiff),
     ...tempo(sig, fps),
+    root: { netTravel: r2(net / h), maxTravel: r2(maxTravel / h), netTurnDeg: Math.round(turn * 180 / Math.PI), turnRangeDeg: Math.round((cmax - cmin) * 180 / Math.PI), hipsBounce: r2((pct(0.95) - pct(0.05)) / h) },
+    facing, bodyShare: share,
+    poses: { start: p0.pose, end: p1.pose, startSupport: p0.support, endSupport: p1.support, startArms: p0.arms, endArms: p1.arms },
     contacts: { left: contacts(track.leftToe, fps), right: contacts(track.rightToe, fps) },
   };
 }
