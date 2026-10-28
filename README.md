@@ -175,7 +175,7 @@ tools/               テスト曲の生成、サンプルVRMの取得
 
 ## 素材について
 
-このリポジトリにはモデル・モーション・曲は入っていません。Mixamo の FBX、CMU のモーションキャプチャ、MMD の素材は再配布できないため、各自で入手して手元に置きます。入手方法と置き場所は [docs/assets.md](docs/assets.md) にまとめています。
+このリポジトリにはモデル・モーション・曲は入っていません。Mixamo の FBX や MMD の素材は再配布できないため、各自で入手して手元に置きます。入手方法と置き場所は [docs/assets.md](docs/assets.md) にまとめています。CMU のモーションキャプチャと Quaternius のアニメーション（どちらも再配布可）は、[tools/open-motions](tools/open-motions/) で VRMA に変換できます。
 
 ## クレジット
 
@@ -184,7 +184,7 @@ tools/               テスト曲の生成、サンプルVRMの取得
 - [Playwright](https://playwright.dev/)（Apache-2.0）
 - [FFmpeg](https://ffmpeg.org/)（LGPL/GPL。別途インストールして使います）
 - 歌詞の自動合わせ: [stable-ts](https://github.com/jianfch/stable-ts)（MIT）/ [OpenAI Whisper](https://github.com/openai/whisper)（MIT）、ボーカル分離: [Demucs](https://github.com/facebookresearch/demucs)（MIT）
-- モーション: [Mixamo](https://www.mixamo.com/)（Adobe）、[CMU Graphics Lab Motion Capture Database](http://mocap.cs.cmu.edu/)（使う場合。各自で入手）
+- モーション: [Mixamo](https://www.mixamo.com/)（Adobe）、[CMU Graphics Lab Motion Capture Database](http://mocap.cs.cmu.edu/)、[Quaternius Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html)（CC0）
 
 ## ライセンス
 

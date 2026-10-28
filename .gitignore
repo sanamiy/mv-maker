@@ -27,7 +27,7 @@ assets/mixamo/*
 !assets/mixamo/catalog.json
 !assets/mixamo/catalog.schema.json
 
-# 再配布できないモーション素材（CMU mocap・MMD など）
+# 元のモーション素材のファイル（MMD は再配布不可。CMU・Quaternius は tools/open-motions で VRMA にしてから配る）
 *.fbx
 *.bvh
 *.vmd

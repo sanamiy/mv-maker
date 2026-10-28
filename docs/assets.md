@@ -26,9 +26,10 @@ VRM を使うときは、モデルごとの利用条件（VRM ファイルに埋
 
 ## CMU Graphics Lab Motion Capture Database（BVH など）
 
-[CMU mocap](http://mocap.cs.cmu.edu/) のデータは、作品に組み込むのは自由ですが、
-**データそのものを（変換した形でも）配布し直すことはできません**。使う場合は各自で
-http://mocap.cs.cmu.edu/ から（または有志による BVH 変換版から）ダウンロードし、`assets/cmu/` に置いてください。
+[CMU mocap](http://mocap.cs.cmu.edu/) のデータは、[FAQ](http://mocap.cs.cmu.edu/faqs.php) によると許可なく複製・改変・再配布でき、商用製品に含めることもできます。
+できないのは **データそのものを（変換した形でも）販売すること** だけです。CMU のサイトを全件クロールしないよう求められているので、
+VRMA に変換済みのものを使うか、有志による BVH 変換版（GitHub のミラー）から取得してください。
+変換ツールは [tools/open-motions](../tools/open-motions/) にあります。
 CMU の求めに従い、使った作品のクレジットには
 「The data used in this project was obtained from mocap.cs.cmu.edu. The database was created with funding from NSF EIA-0196217.」
 を入れてください。
