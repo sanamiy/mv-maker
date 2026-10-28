@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mv-maker/mixamo-catalog",
+  "title": "Mixamo モーションのカタログ",
+  "description": "MV で使う Mixamo の動きを、AI が選びやすいタグと解析値で引けるようにする一覧。Mixamo の FBX・説明文・サムネイルは含めない。tags は人（や AI）が付けたもの、analysis と derived は tools/mixamo-catalog.mjs が FBX から計算したもの。",
+  "type": "object",
+  "required": ["version", "motions"],
+  "properties": {
+    "version": { "const": 1 },
+    "vocabulary": { "type": "object", "description": "タグに使う語の一覧と意味（人が読むためのもの）" },
+    "analyzedWith": {
+      "type": "object",
+      "description": "最後に解析したときの VRM と日付。強さ・移動量は VRM の体格で少し変わる",
+      "properties": { "vrm": { "type": "string" }, "date": { "type": "string", "format": "date" } }
+    },
+    "motions": { "type": "array", "items": { "$ref": "#/$defs/motion" } }
+  },
+  "$defs": {
+    "section": { "enum": ["intro", "verse", "pre-chorus", "chorus", "interlude", "bridge", "outro"] },
+    "motion": {
+      "type": "object",
+      "required": ["id", "mixamoName", "tags", "tagSource"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$", "description": "カタログ内の短い名前。scene.json から引くときのキー" },
+        "mixamoName": { "type": "string", "description": "Mixamo で検索するときの動きの名前" },
+        "file": { "type": "string", "description": "assets/mixamo/ に置いた FBX のファイル名（解析時に自動で埋まる）" },
+        "download": {
+          "type": "object", "additionalProperties": false,
+          "properties": { "inPlace": { "type": "boolean", "description": "ダウンロード時に In Place にチェックする（移動する動き）" } }
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["genre", "energy", "tempoBand", "bodyParts", "locomotion", "loopable", "facing", "sections", "mood"],
+          "properties": {
+            "genre": { "type": "array", "items": { "enum": ["hiphop", "house", "pop", "disco", "retro", "latin", "ballroom", "jazz", "belly", "breaking", "novelty", "gesture", "idle"] } },
+            "energy": { "type": "integer", "minimum": 1, "maximum": 5, "description": "1 ほぼ静止 〜 5 全身で激しい" },
+            "tempoBand": { "type": "array", "items": { "enum": ["slow", "mid", "fast"] }, "description": "合う曲のテンポ。slow <90 / mid 90〜120 / fast >120 BPM" },
+            "bodyParts": { "type": "array", "items": { "enum": ["arms", "legs", "hips", "torso", "head", "full"] }, "description": "主に動く部位" },
+            "locomotion": { "enum": ["in-place", "stepping", "traveling", "spinning"] },
+            "loopable": { "type": "boolean", "description": "最後と最初がつながり、くり返しても不自然でない" },
+            "facing": { "enum": ["front", "side", "turning"] },
+            "sections": { "type": "array", "items": { "$ref": "#/$defs/section" }, "description": "MV のどのセクションに向くか" },
+            "mood": { "type": "array", "items": { "enum": ["cool", "cute", "funny", "sexy", "elegant", "energetic", "chill", "festive", "dramatic", "retro", "triumphant"] } }
+          }
+        },
+        "tagSource": { "enum": ["guess", "reviewed"], "description": "guess: 名前と一般的な知識からの推測（動きを見て直していない）/ reviewed: 動きを見て確認した" },
+        "notes": { "type": "string", "description": "自前の短いメモ（使いどころ・注意）。Mixamo の説明文は転載しない" },
+        "analysis": {
+          "type": ["object", "null"],
+          "description": "FBX からの解析値。bpm〜travel は runtime/mixamo.js の analyzeMotion と同じ（再生時もこの値で曲の拍に合わせる）",
+          "properties": {
+            "duration": { "type": "number", "description": "1ループの長さ（秒）" },
+            "bpm": { "type": "number", "description": "動きの拍のテンポ（元の速さのとき）" },
+            "period": { "type": "number", "description": "1拍の長さ（秒）" },
+            "beats": { "type": "integer", "description": "1ループの拍数" },
+            "phase": { "type": "number", "description": "拍の頭が来る時刻（秒）" },
+            "barPhase": { "type": "number", "description": "4拍のまとまりの頭が来る時刻（秒）" },
+            "beatClarity": { "type": "number", "description": "0〜1。拍がはっきりした動きほど大きい" },
+            "strength": { "type": "number", "description": "手足・腰・頭の平均の速さ（m/s）" },
+            "travel": { "type": "number", "description": "腰が最初の位置から離れる最大の距離（m）。In Place ならほぼ 0" },
+            "hipsBounce": { "type": "number", "description": "腰の上下の振れ幅（m）" },
+            "yawRange": { "type": "number", "description": "体の向きの振れ幅（度）" },
+            "yawNet": { "type": "number", "description": "最初→最後の向きの変化（度）。大きいとループで向きが飛ぶ" },
+            "loopDeg": { "type": "number", "description": "最初と最後の姿勢の差（ボーン平均、度）。小さいほどループがなめらか" },
+            "bodyShare": {
+              "type": "object", "description": "部位ごとの回転の動きの割合（合計 1）",
+              "properties": { "arms": { "type": "number" }, "legs": { "type": "number" }, "torso": { "type": "number" }, "hips": { "type": "number" }, "head": { "type": "number" } }
+            }
+          }
+        },
+        "derived": {
+          "type": ["object", "null"],
+          "description": "analysis から機械的に決めたタグ。tags と食い違うときは動きを見て tags を直す手がかりにする",
+          "properties": {
+            "tempoBand": { "enum": ["slow", "mid", "fast"] },
+            "locomotion": { "enum": ["in-place", "stepping", "traveling"] },
+            "loopable": { "type": "boolean" },
+            "turning": { "type": "boolean" },
+            "energy": { "type": "integer", "minimum": 1, "maximum": 5 },
+            "mainParts": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}

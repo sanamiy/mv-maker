@@ -1,0 +1,1813 @@
+{
+  "$schema": "./catalog.schema.json",
+  "version": 1,
+  "about": "Mixamo の動きの名前と、mv-maker が独自に付けたタグ・解析値だけの一覧。FBX は含まない（各自 Mixamo からダウンロードして assets/mixamo/ に置く）。更新: node tools/mixamo-catalog.mjs",
+  "vocabulary": {
+    "sections": {
+      "intro": "前奏",
+      "verse": "Aメロ",
+      "pre-chorus": "Bメロ",
+      "chorus": "サビ",
+      "interlude": "間奏",
+      "bridge": "Cメロ・落ちサビ",
+      "outro": "アウトロ"
+    },
+    "tempoBand": {
+      "slow": "90 BPM 未満",
+      "mid": "90〜120 BPM",
+      "fast": "120 BPM より速い"
+    },
+    "energy": {
+      "1": "ほぼ静止",
+      "2": "小さく動く",
+      "3": "ふつうに踊る",
+      "4": "大きく踊る",
+      "5": "全身で激しい"
+    },
+    "locomotion": {
+      "in-place": "その場",
+      "stepping": "足を踏みかえるが大きくは動かない",
+      "traveling": "移動する",
+      "spinning": "回る"
+    },
+    "facing": {
+      "front": "おおむね正面",
+      "side": "横向きが多い",
+      "turning": "向きが変わる"
+    }
+  },
+  "motions": [
+    {
+      "id": "hip-hop-dancing",
+      "mixamoName": "Hip Hop Dancing",
+      "tags": {
+        "genre": [
+          "hiphop"
+        ],
+        "energy": 4,
+        "tempoBand": [
+          "mid",
+          "fast"
+        ],
+        "bodyParts": [
+          "full"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "chorus"
+        ],
+        "mood": [
+          "cool",
+          "energetic"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "定番のヒップホップ。サビの主役に。",
+      "analysis": {
+        "duration": 4.73,
+        "bpm": 101.4,
+        "period": 0.592,
+        "beats": 8,
+        "phase": 0.187,
+        "barPhase": 0.779,
+        "beatClarity": 0.14,
+        "strength": 1.6,
+        "travel": 0.11,
+        "hipsBounce": 0.121,
+        "yawRange": 70,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.38,
+          "legs": 0.3,
+          "torso": 0.05,
+          "hips": 0.18,
+          "head": 0.1
+        }
+      },
+      "derived": {
+        "tempoBand": "mid",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 5,
+        "mainParts": [
+          "arms",
+          "legs"
+        ]
+      },
+      "file": "Hip Hop Dancing.fbx"
+    },
+    {
+      "id": "samba-dancing",
+      "mixamoName": "Samba Dancing",
+      "file": "samba-test.fbx",
+      "tags": {
+        "genre": [
+          "latin"
+        ],
+        "energy": 4,
+        "tempoBand": [
+          "fast"
+        ],
+        "bodyParts": [
+          "legs",
+          "hips"
+        ],
+        "locomotion": "stepping",
+        "loopable": true,
+        "facing": "turning",
+        "sections": [
+          "chorus",
+          "interlude"
+        ],
+        "mood": [
+          "festive",
+          "energetic"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "足さばきと腰が中心。1ループの中で1回転する（faceFront で正面に固定もできる）。",
+      "analysis": {
+        "duration": 18.2,
+        "bpm": 105.5,
+        "period": 0.569,
+        "beats": 32,
+        "phase": 0.521,
+        "barPhase": 1.089,
+        "beatClarity": 0.17,
+        "strength": 1.42,
+        "travel": 0.5,
+        "hipsBounce": 0.226,
+        "yawRange": 430,
+        "yawNet": 360,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.32,
+          "legs": 0.24,
+          "torso": 0.11,
+          "hips": 0.19,
+          "head": 0.13
+        }
+      },
+      "derived": {
+        "tempoBand": "mid",
+        "locomotion": "stepping",
+        "loopable": true,
+        "turning": true,
+        "energy": 5,
+        "mainParts": [
+          "arms"
+        ]
+      }
+    },
+    {
+      "id": "silly-dancing",
+      "mixamoName": "Silly Dancing",
+      "tags": {
+        "genre": [
+          "novelty"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "mid",
+          "fast"
+        ],
+        "bodyParts": [
+          "full"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "interlude",
+          "bridge"
+        ],
+        "mood": [
+          "funny",
+          "cute"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "ふざけた動き。コミカルな間奏に。",
+      "analysis": {
+        "duration": 5.43,
+        "bpm": 154.6,
+        "period": 0.388,
+        "beats": 14,
+        "phase": 0.195,
+        "barPhase": 0.583,
+        "beatClarity": 0.67,
+        "strength": 0.92,
+        "travel": 0.19,
+        "hipsBounce": 0.067,
+        "yawRange": 80,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.3,
+          "legs": 0.21,
+          "torso": 0.1,
+          "hips": 0.26,
+          "head": 0.12
+        }
+      },
+      "derived": {
+        "tempoBand": "fast",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 4,
+        "mainParts": [
+          "arms",
+          "hips"
+        ]
+      },
+      "file": "Silly Dancing.fbx"
+    },
+    {
+      "id": "gangnam-style",
+      "mixamoName": "Gangnam Style",
+      "tags": {
+        "genre": [
+          "pop",
+          "novelty"
+        ],
+        "energy": 5,
+        "tempoBand": [
+          "fast"
+        ],
+        "bodyParts": [
+          "legs",
+          "arms"
+        ],
+        "locomotion": "stepping",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "chorus"
+        ],
+        "mood": [
+          "funny",
+          "energetic"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "馬乗りのステップ。曲調を選ぶ。",
+      "analysis": {
+        "duration": 12.37,
+        "bpm": 131,
+        "period": 0.458,
+        "beats": 27,
+        "phase": 0.36,
+        "barPhase": 1.276,
+        "beatClarity": 0.4,
+        "strength": 1.11,
+        "travel": 0.85,
+        "hipsBounce": 0.132,
+        "yawRange": 39,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.31,
+          "legs": 0.35,
+          "torso": 0.06,
+          "hips": 0.13,
+          "head": 0.15
+        }
+      },
+      "derived": {
+        "tempoBand": "fast",
+        "locomotion": "stepping",
+        "loopable": true,
+        "turning": false,
+        "energy": 4,
+        "mainParts": [
+          "arms",
+          "legs"
+        ]
+      },
+      "file": "Gangnam Style.fbx"
+    },
+    {
+      "id": "macarena-dance",
+      "mixamoName": "Macarena Dance",
+      "tags": {
+        "genre": [
+          "pop",
+          "novelty"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "mid"
+        ],
+        "bodyParts": [
+          "arms",
+          "hips"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "chorus",
+          "interlude"
+        ],
+        "mood": [
+          "festive",
+          "funny"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "腕の手順が中心。脚は控えめ。",
+      "analysis": {
+        "duration": 8.23,
+        "bpm": 87.4,
+        "period": 0.686,
+        "beats": 12,
+        "phase": 0.054,
+        "barPhase": 2.112,
+        "beatClarity": 0.09,
+        "strength": 0.78,
+        "travel": 0.06,
+        "hipsBounce": 0.369,
+        "yawRange": 59,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.29,
+          "legs": 0.22,
+          "torso": 0.11,
+          "hips": 0.26,
+          "head": 0.12
+        }
+      },
+      "derived": {
+        "tempoBand": "slow",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 3,
+        "mainParts": [
+          "arms",
+          "hips"
+        ]
+      },
+      "file": "Macarena Dance.fbx"
+    },
+    {
+      "id": "twist-dance",
+      "mixamoName": "Twist Dance",
+      "tags": {
+        "genre": [
+          "retro"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "mid",
+          "fast"
+        ],
+        "bodyParts": [
+          "hips",
+          "legs"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "chorus",
+          "interlude"
+        ],
+        "mood": [
+          "retro",
+          "cute"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "60年代風の腰ひねり。",
+      "analysis": {
+        "duration": 9.43,
+        "bpm": 165.4,
+        "period": 0.363,
+        "beats": 26,
+        "phase": 0.322,
+        "barPhase": 0.322,
+        "beatClarity": 0.29,
+        "strength": 1.15,
+        "travel": 0.17,
+        "hipsBounce": 0.167,
+        "yawRange": 100,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.27,
+          "legs": 0.21,
+          "torso": 0.14,
+          "hips": 0.28,
+          "head": 0.1
+        }
+      },
+      "derived": {
+        "tempoBand": "fast",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 4,
+        "mainParts": [
+          "arms",
+          "hips"
+        ]
+      },
+      "file": "Twist Dance.fbx"
+    },
+    {
+      "id": "chicken-dance",
+      "mixamoName": "Chicken Dance",
+      "tags": {
+        "genre": [
+          "novelty"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "mid",
+          "fast"
+        ],
+        "bodyParts": [
+          "arms"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "interlude"
+        ],
+        "mood": [
+          "funny"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "ネタ寄り。真面目な曲には不向き。",
+      "analysis": {
+        "duration": 4.77,
+        "bpm": 100.7,
+        "period": 0.596,
+        "beats": 8,
+        "phase": 0.508,
+        "barPhase": 1.104,
+        "beatClarity": 0.11,
+        "strength": 0.91,
+        "travel": 0.16,
+        "hipsBounce": 0.226,
+        "yawRange": 39,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.42,
+          "legs": 0.18,
+          "torso": 0.09,
+          "hips": 0.22,
+          "head": 0.09
+        }
+      },
+      "derived": {
+        "tempoBand": "mid",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 4,
+        "mainParts": [
+          "arms"
+        ]
+      },
+      "file": "Chicken Dance.fbx"
+    },
+    {
+      "id": "salsa-dancing",
+      "mixamoName": "Salsa Dancing",
+      "tags": {
+        "genre": [
+          "latin"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "fast"
+        ],
+        "bodyParts": [
+          "legs",
+          "hips"
+        ],
+        "locomotion": "stepping",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "verse",
+          "interlude"
+        ],
+        "mood": [
+          "elegant",
+          "sexy"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "ステップ主体。",
+      "analysis": {
+        "duration": 2.27,
+        "bpm": 158.8,
+        "period": 0.378,
+        "beats": 6,
+        "phase": 0.026,
+        "barPhase": 0.026,
+        "beatClarity": 0.45,
+        "strength": 1.18,
+        "travel": 0.34,
+        "hipsBounce": 0.051,
+        "yawRange": 26,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.36,
+          "legs": 0.27,
+          "torso": 0.06,
+          "hips": 0.12,
+          "head": 0.19
+        }
+      },
+      "derived": {
+        "tempoBand": "fast",
+        "locomotion": "stepping",
+        "loopable": true,
+        "turning": false,
+        "energy": 4,
+        "mainParts": [
+          "arms",
+          "legs"
+        ]
+      },
+      "file": "Salsa Dancing.fbx"
+    },
+    {
+      "id": "swing-dancing",
+      "mixamoName": "Swing Dancing",
+      "tags": {
+        "genre": [
+          "jazz",
+          "retro"
+        ],
+        "energy": 4,
+        "tempoBand": [
+          "fast"
+        ],
+        "bodyParts": [
+          "legs",
+          "arms"
+        ],
+        "locomotion": "traveling",
+        "loopable": true,
+        "facing": "turning",
+        "sections": [
+          "chorus"
+        ],
+        "mood": [
+          "retro",
+          "festive"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "スウィングの曲に。",
+      "analysis": {
+        "duration": 20.9,
+        "bpm": 94.7,
+        "period": 0.633,
+        "beats": 33,
+        "phase": 0.108,
+        "barPhase": 0.742,
+        "beatClarity": 0.13,
+        "strength": 1.88,
+        "travel": 1.16,
+        "hipsBounce": 0.204,
+        "yawRange": 1126,
+        "yawNet": 1080,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.28,
+          "legs": 0.34,
+          "torso": 0.08,
+          "hips": 0.2,
+          "head": 0.09
+        }
+      },
+      "derived": {
+        "tempoBand": "mid",
+        "locomotion": "traveling",
+        "loopable": true,
+        "turning": true,
+        "energy": 5,
+        "mainParts": [
+          "arms",
+          "legs"
+        ]
+      },
+      "file": "Swing Dancing.fbx"
+    },
+    {
+      "id": "robot-hip-hop-dance",
+      "mixamoName": "Robot Hip Hop Dance",
+      "tags": {
+        "genre": [
+          "hiphop"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "mid"
+        ],
+        "bodyParts": [
+          "arms",
+          "torso"
+        ],
+        "locomotion": "stepping",
+        "loopable": true,
+        "facing": "turning",
+        "sections": [
+          "verse",
+          "interlude"
+        ],
+        "mood": [
+          "cool",
+          "funny"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "カクカクしたロボット風。キメが拍に乗りやすい。",
+      "analysis": {
+        "duration": 15.43,
+        "bpm": 112.7,
+        "period": 0.532,
+        "beats": 29,
+        "phase": 0.36,
+        "barPhase": 0.892,
+        "beatClarity": 0.1,
+        "strength": 0.72,
+        "travel": 0.89,
+        "hipsBounce": 0.233,
+        "yawRange": 382,
+        "yawNet": 360,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.25,
+          "legs": 0.27,
+          "torso": 0.11,
+          "hips": 0.22,
+          "head": 0.16
+        }
+      },
+      "derived": {
+        "tempoBand": "mid",
+        "locomotion": "stepping",
+        "loopable": true,
+        "turning": true,
+        "energy": 3,
+        "mainParts": [
+          "arms",
+          "legs"
+        ]
+      },
+      "file": "Robot Hip Hop Dance.fbx"
+    },
+    {
+      "id": "house-dancing",
+      "mixamoName": "House Dancing",
+      "tags": {
+        "genre": [
+          "house"
+        ],
+        "energy": 4,
+        "tempoBand": [
+          "fast"
+        ],
+        "bodyParts": [
+          "legs"
+        ],
+        "locomotion": "stepping",
+        "loopable": true,
+        "facing": "turning",
+        "sections": [
+          "chorus"
+        ],
+        "mood": [
+          "energetic",
+          "cool"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "足のステップが細かい。四つ打ち向き。",
+      "analysis": {
+        "duration": 21.37,
+        "bpm": 129.2,
+        "period": 0.464,
+        "beats": 46,
+        "phase": 0.198,
+        "barPhase": 0.663,
+        "beatClarity": 0.11,
+        "strength": 1.48,
+        "travel": 0.79,
+        "hipsBounce": 0.264,
+        "yawRange": 189,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.3,
+          "legs": 0.2,
+          "torso": 0.07,
+          "hips": 0.24,
+          "head": 0.18
+        }
+      },
+      "derived": {
+        "tempoBand": "fast",
+        "locomotion": "stepping",
+        "loopable": true,
+        "turning": true,
+        "energy": 5,
+        "mainParts": [
+          "arms"
+        ]
+      },
+      "file": "House Dancing.fbx"
+    },
+    {
+      "id": "wave-hip-hop-dance",
+      "mixamoName": "Wave Hip Hop Dance",
+      "tags": {
+        "genre": [
+          "hiphop"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "mid"
+        ],
+        "bodyParts": [
+          "arms",
+          "torso"
+        ],
+        "locomotion": "stepping",
+        "loopable": true,
+        "facing": "turning",
+        "sections": [
+          "verse",
+          "bridge"
+        ],
+        "mood": [
+          "cool"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "腕から体へ波を通す動き。",
+      "analysis": {
+        "duration": 16.83,
+        "bpm": 114.1,
+        "period": 0.526,
+        "beats": 32,
+        "phase": 0.276,
+        "barPhase": 1.328,
+        "beatClarity": 0.2,
+        "strength": 0.91,
+        "travel": 0.43,
+        "hipsBounce": 0.203,
+        "yawRange": 446,
+        "yawNet": 360,
+        "loopDeg": 0.5,
+        "bodyShare": {
+          "arms": 0.33,
+          "legs": 0.21,
+          "torso": 0.11,
+          "hips": 0.22,
+          "head": 0.13
+        }
+      },
+      "derived": {
+        "tempoBand": "mid",
+        "locomotion": "stepping",
+        "loopable": true,
+        "turning": true,
+        "energy": 4,
+        "mainParts": [
+          "arms"
+        ]
+      },
+      "file": "Wave Hip Hop Dance.fbx"
+    },
+    {
+      "id": "tut-hip-hop-dance",
+      "mixamoName": "Tut Hip Hop Dance",
+      "tags": {
+        "genre": [
+          "hiphop"
+        ],
+        "energy": 2,
+        "tempoBand": [
+          "mid"
+        ],
+        "bodyParts": [
+          "arms"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "turning",
+        "sections": [
+          "verse",
+          "pre-chorus"
+        ],
+        "mood": [
+          "cool"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "腕で直角を作る。上半身アップのカメラに合う。",
+      "analysis": {
+        "duration": 16.93,
+        "bpm": 88.6,
+        "period": 0.677,
+        "beats": 25,
+        "phase": 0.077,
+        "barPhase": 1.431,
+        "beatClarity": 0.14,
+        "strength": 0.79,
+        "travel": 0.23,
+        "hipsBounce": 0.114,
+        "yawRange": 251,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.39,
+          "legs": 0.28,
+          "torso": 0.07,
+          "hips": 0.17,
+          "head": 0.1
+        }
+      },
+      "derived": {
+        "tempoBand": "slow",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": true,
+        "energy": 3,
+        "mainParts": [
+          "arms",
+          "legs"
+        ]
+      },
+      "file": "Tut Hip Hop Dance.fbx"
+    },
+    {
+      "id": "rumba-dancing",
+      "mixamoName": "Rumba Dancing",
+      "tags": {
+        "genre": [
+          "latin",
+          "ballroom"
+        ],
+        "energy": 2,
+        "tempoBand": [
+          "slow",
+          "mid"
+        ],
+        "bodyParts": [
+          "hips",
+          "legs"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "verse",
+          "outro"
+        ],
+        "mood": [
+          "elegant",
+          "sexy"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "ゆっくりめのラテン。",
+      "analysis": {
+        "duration": 2.37,
+        "bpm": 126.8,
+        "period": 0.473,
+        "beats": 5,
+        "phase": 0.413,
+        "barPhase": 0.413,
+        "beatClarity": 0.11,
+        "strength": 0.83,
+        "travel": 0.11,
+        "hipsBounce": 0.048,
+        "yawRange": 77,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.19,
+          "legs": 0.24,
+          "torso": 0.17,
+          "hips": 0.32,
+          "head": 0.08
+        }
+      },
+      "derived": {
+        "tempoBand": "fast",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 3,
+        "mainParts": [
+          "hips"
+        ]
+      },
+      "file": "Rumba Dancing.fbx"
+    },
+    {
+      "id": "belly-dancing",
+      "mixamoName": "Belly Dancing",
+      "tags": {
+        "genre": [
+          "belly"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "mid"
+        ],
+        "bodyParts": [
+          "hips",
+          "torso",
+          "arms"
+        ],
+        "locomotion": "stepping",
+        "loopable": true,
+        "facing": "turning",
+        "sections": [
+          "verse",
+          "interlude"
+        ],
+        "mood": [
+          "sexy",
+          "elegant"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "腰と胴が中心。 Mixamo では「Belly Dance」という名前。",
+      "analysis": {
+        "duration": 19.63,
+        "bpm": 149.7,
+        "period": 0.401,
+        "beats": 49,
+        "phase": 0.102,
+        "barPhase": 0.904,
+        "beatClarity": 0.02,
+        "strength": 0.82,
+        "travel": 0.81,
+        "hipsBounce": 0.075,
+        "yawRange": 825,
+        "yawNet": 720,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.28,
+          "legs": 0.2,
+          "torso": 0.12,
+          "hips": 0.34,
+          "head": 0.07
+        }
+      },
+      "derived": {
+        "tempoBand": "fast",
+        "locomotion": "stepping",
+        "loopable": true,
+        "turning": true,
+        "energy": 3,
+        "mainParts": [
+          "arms",
+          "hips"
+        ]
+      },
+      "file": "Belly Dance.fbx"
+    },
+    {
+      "id": "jazz-dancing",
+      "mixamoName": "Jazz Dancing",
+      "tags": {
+        "genre": [
+          "jazz"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "mid",
+          "fast"
+        ],
+        "bodyParts": [
+          "full"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "chorus",
+          "bridge"
+        ],
+        "mood": [
+          "elegant",
+          "energetic"
+        ]
+      },
+      "tagSource": "guess",
+      "analysis": {
+        "duration": 2.27,
+        "bpm": 105.9,
+        "period": 0.567,
+        "beats": 4,
+        "phase": 0.132,
+        "barPhase": 0.132,
+        "beatClarity": 0.66,
+        "strength": 1.7,
+        "travel": 0.08,
+        "hipsBounce": 0.127,
+        "yawRange": 35,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.37,
+          "legs": 0.28,
+          "torso": 0.09,
+          "hips": 0.14,
+          "head": 0.1
+        }
+      },
+      "derived": {
+        "tempoBand": "mid",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 5,
+        "mainParts": [
+          "arms",
+          "legs"
+        ]
+      },
+      "file": "Jazz Dancing.fbx",
+      "notes": "In Place で書き出したループ版。"
+    },
+    {
+      "id": "snake-hip-hop-dance",
+      "mixamoName": "Snake Hip Hop Dance",
+      "tags": {
+        "genre": [
+          "hiphop"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "mid"
+        ],
+        "bodyParts": [
+          "torso",
+          "arms"
+        ],
+        "locomotion": "stepping",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "verse",
+          "pre-chorus"
+        ],
+        "mood": [
+          "cool",
+          "sexy"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "体をくねらせる。",
+      "analysis": {
+        "duration": 15.27,
+        "bpm": 94.3,
+        "period": 0.636,
+        "beats": 24,
+        "phase": 0.614,
+        "barPhase": 1.887,
+        "beatClarity": 0.18,
+        "strength": 0.82,
+        "travel": 0.27,
+        "hipsBounce": 0.266,
+        "yawRange": 79,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.22,
+          "legs": 0.24,
+          "torso": 0.12,
+          "hips": 0.29,
+          "head": 0.12
+        }
+      },
+      "derived": {
+        "tempoBand": "mid",
+        "locomotion": "stepping",
+        "loopable": true,
+        "turning": false,
+        "energy": 3,
+        "mainParts": [
+          "hips"
+        ]
+      },
+      "file": "Snake Hip Hop Dance.fbx"
+    },
+    {
+      "id": "shuffling",
+      "mixamoName": "Shuffling",
+      "tags": {
+        "genre": [
+          "house"
+        ],
+        "energy": 5,
+        "tempoBand": [
+          "fast"
+        ],
+        "bodyParts": [
+          "legs"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "chorus"
+        ],
+        "mood": [
+          "energetic"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "シャッフル。EDM・速い四つ打ちのサビに。",
+      "analysis": {
+        "duration": 7.5,
+        "bpm": 96,
+        "period": 0.625,
+        "beats": 12,
+        "phase": 0.037,
+        "barPhase": 0.662,
+        "beatClarity": 0.05,
+        "strength": 1.56,
+        "travel": 0.23,
+        "hipsBounce": 0.147,
+        "yawRange": 64,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.4,
+          "legs": 0.31,
+          "torso": 0.04,
+          "hips": 0.16,
+          "head": 0.1
+        }
+      },
+      "derived": {
+        "tempoBand": "mid",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 5,
+        "mainParts": [
+          "arms",
+          "legs"
+        ]
+      },
+      "file": "Shuffling.fbx"
+    },
+    {
+      "id": "ymca-dance",
+      "mixamoName": "Ymca Dance",
+      "tags": {
+        "genre": [
+          "disco",
+          "novelty"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "mid"
+        ],
+        "bodyParts": [
+          "arms"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "chorus",
+          "outro"
+        ],
+        "mood": [
+          "festive",
+          "funny"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "腕で文字を作る。",
+      "analysis": {
+        "duration": 4.5,
+        "bpm": 93.3,
+        "period": 0.643,
+        "beats": 7,
+        "phase": 0.241,
+        "barPhase": 1.527,
+        "beatClarity": 0.33,
+        "strength": 1.02,
+        "travel": 0.07,
+        "hipsBounce": 0.148,
+        "yawRange": 59,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.41,
+          "legs": 0.24,
+          "torso": 0.09,
+          "hips": 0.16,
+          "head": 0.1
+        }
+      },
+      "derived": {
+        "tempoBand": "mid",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 4,
+        "mainParts": [
+          "arms"
+        ]
+      },
+      "file": "Ymca Dance.fbx"
+    },
+    {
+      "id": "booty-hip-hop-dance",
+      "mixamoName": "Booty Hip Hop Dance",
+      "tags": {
+        "genre": [
+          "hiphop"
+        ],
+        "energy": 4,
+        "tempoBand": [
+          "mid"
+        ],
+        "bodyParts": [
+          "hips",
+          "legs"
+        ],
+        "locomotion": "traveling",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "chorus"
+        ],
+        "mood": [
+          "sexy",
+          "energetic"
+        ]
+      },
+      "tagSource": "guess",
+      "analysis": {
+        "duration": 4.9,
+        "bpm": 61.2,
+        "period": 0.98,
+        "beats": 5,
+        "phase": 0.019,
+        "barPhase": 0.019,
+        "beatClarity": 0.5,
+        "strength": 0.97,
+        "travel": 1.11,
+        "hipsBounce": 0.081,
+        "yawRange": 39,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.3,
+          "legs": 0.28,
+          "torso": 0.13,
+          "hips": 0.2,
+          "head": 0.1
+        }
+      },
+      "derived": {
+        "tempoBand": "slow",
+        "locomotion": "traveling",
+        "loopable": true,
+        "turning": false,
+        "energy": 4,
+        "mainParts": [
+          "arms",
+          "legs"
+        ]
+      },
+      "file": "Booty Hip Hop Dance.fbx"
+    },
+    {
+      "id": "arms-hip-hop-dance",
+      "mixamoName": "Arms Hip Hop Dance",
+      "tags": {
+        "genre": [
+          "hiphop"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "mid"
+        ],
+        "bodyParts": [
+          "arms"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "turning",
+        "sections": [
+          "verse",
+          "pre-chorus"
+        ],
+        "mood": [
+          "cool"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "腕だけ大きく動く。脚は手作りの bounce と組み合わせやすい。",
+      "analysis": {
+        "duration": 21.97,
+        "bpm": 95.6,
+        "period": 0.628,
+        "beats": 35,
+        "phase": 0.593,
+        "barPhase": 1.22,
+        "beatClarity": 0.13,
+        "strength": 0.84,
+        "travel": 0.22,
+        "hipsBounce": 0.145,
+        "yawRange": 172,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.24,
+          "legs": 0.2,
+          "torso": 0.11,
+          "hips": 0.32,
+          "head": 0.13
+        }
+      },
+      "derived": {
+        "tempoBand": "mid",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": true,
+        "energy": 3,
+        "mainParts": [
+          "hips"
+        ]
+      },
+      "file": "Arms Hip Hop Dance.fbx"
+    },
+    {
+      "id": "thriller-part-2",
+      "mixamoName": "Thriller Part 2",
+      "tags": {
+        "genre": [
+          "pop",
+          "retro"
+        ],
+        "energy": 4,
+        "tempoBand": [
+          "mid"
+        ],
+        "bodyParts": [
+          "full"
+        ],
+        "locomotion": "traveling",
+        "loopable": false,
+        "facing": "turning",
+        "sections": [
+          "chorus",
+          "bridge"
+        ],
+        "mood": [
+          "dramatic",
+          "retro"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "有名な振付の一部。ループより一回きりの見せ場に。 前後に大きく動くので inPlace と組み合わせるとよい。",
+      "analysis": {
+        "duration": 18.83,
+        "bpm": 79.6,
+        "period": 0.753,
+        "beats": 25,
+        "phase": 0.021,
+        "barPhase": 0.021,
+        "beatClarity": 0.46,
+        "strength": 1.67,
+        "travel": 2.81,
+        "hipsBounce": 0.492,
+        "yawRange": 148,
+        "yawNet": 0,
+        "loopDeg": 22.9,
+        "bodyShare": {
+          "arms": 0.34,
+          "legs": 0.23,
+          "torso": 0.09,
+          "hips": 0.17,
+          "head": 0.17
+        }
+      },
+      "derived": {
+        "tempoBand": "slow",
+        "locomotion": "traveling",
+        "loopable": false,
+        "turning": true,
+        "energy": 5,
+        "mainParts": [
+          "arms"
+        ]
+      },
+      "file": "Thriller Part 2.fbx"
+    },
+    {
+      "id": "northern-soul-spin",
+      "mixamoName": "Northern Soul Spin",
+      "tags": {
+        "genre": [
+          "retro"
+        ],
+        "energy": 4,
+        "tempoBand": [
+          "fast"
+        ],
+        "bodyParts": [
+          "full"
+        ],
+        "locomotion": "spinning",
+        "loopable": false,
+        "facing": "turning",
+        "sections": [
+          "interlude",
+          "bridge"
+        ],
+        "mood": [
+          "retro",
+          "energetic"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "回転を含む。faceFront は使わない。",
+      "analysis": {
+        "duration": 4.03,
+        "bpm": 74.4,
+        "period": 0.807,
+        "beats": 5,
+        "phase": 0.507,
+        "barPhase": 0.507,
+        "beatClarity": 0.19,
+        "strength": 2.36,
+        "travel": 0.82,
+        "hipsBounce": 0.091,
+        "yawRange": 1169,
+        "yawNet": 1080,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.12,
+          "legs": 0.2,
+          "torso": 0.04,
+          "hips": 0.58,
+          "head": 0.06
+        }
+      },
+      "derived": {
+        "tempoBand": "slow",
+        "locomotion": "stepping",
+        "loopable": true,
+        "turning": true,
+        "energy": 5,
+        "mainParts": [
+          "hips"
+        ]
+      },
+      "file": "Northern Soul Spin.fbx"
+    },
+    {
+      "id": "cheering",
+      "mixamoName": "Cheering",
+      "tags": {
+        "genre": [
+          "gesture"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "mid",
+          "fast"
+        ],
+        "bodyParts": [
+          "arms"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "chorus",
+          "outro"
+        ],
+        "mood": [
+          "triumphant",
+          "festive"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "両手を上げて盛り上げる。",
+      "analysis": {
+        "duration": 2.9,
+        "bpm": 144.8,
+        "period": 0.414,
+        "beats": 7,
+        "phase": 0.365,
+        "barPhase": 0.779,
+        "beatClarity": 0.49,
+        "strength": 1.1,
+        "travel": 0.06,
+        "hipsBounce": 0.03,
+        "yawRange": 15,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.49,
+          "legs": 0.08,
+          "torso": 0.03,
+          "hips": 0.11,
+          "head": 0.28
+        }
+      },
+      "derived": {
+        "tempoBand": "fast",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 4,
+        "mainParts": [
+          "arms",
+          "head"
+        ]
+      },
+      "file": "Cheering.fbx"
+    },
+    {
+      "id": "clapping",
+      "mixamoName": "Clapping",
+      "tags": {
+        "genre": [
+          "gesture"
+        ],
+        "energy": 2,
+        "tempoBand": [
+          "slow",
+          "mid",
+          "fast"
+        ],
+        "bodyParts": [
+          "arms"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "intro",
+          "interlude",
+          "outro"
+        ],
+        "mood": [
+          "festive"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "手拍子。拍がとても取りやすい。",
+      "analysis": {
+        "duration": 1.17,
+        "bpm": 51.4,
+        "period": 1.167,
+        "beats": 1,
+        "phase": 0.573,
+        "barPhase": 0.573,
+        "beatClarity": 0.08,
+        "strength": 0.3,
+        "travel": 0,
+        "hipsBounce": 0.001,
+        "yawRange": 1,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.81,
+          "legs": 0.03,
+          "torso": 0.04,
+          "hips": 0.04,
+          "head": 0.08
+        }
+      },
+      "derived": {
+        "tempoBand": "slow",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 2,
+        "mainParts": [
+          "arms"
+        ]
+      },
+      "file": "Clapping.fbx"
+    },
+    {
+      "id": "happy-idle",
+      "mixamoName": "Happy Idle",
+      "tags": {
+        "genre": [
+          "idle"
+        ],
+        "energy": 1,
+        "tempoBand": [
+          "slow",
+          "mid"
+        ],
+        "bodyParts": [
+          "torso",
+          "head"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "intro",
+          "verse",
+          "outro"
+        ],
+        "mood": [
+          "chill",
+          "cute"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "待ちの姿勢。Aメロの間をつなぐ。",
+      "analysis": {
+        "duration": 2,
+        "bpm": 120,
+        "period": 0.5,
+        "beats": 4,
+        "phase": 0.372,
+        "barPhase": 0.872,
+        "beatClarity": 0.47,
+        "strength": 0.08,
+        "travel": 0.05,
+        "hipsBounce": 0.004,
+        "yawRange": 3,
+        "yawNet": 0,
+        "loopDeg": 0.1,
+        "bodyShare": {
+          "arms": 0.18,
+          "legs": 0.27,
+          "torso": 0.08,
+          "hips": 0.18,
+          "head": 0.29
+        }
+      },
+      "derived": {
+        "tempoBand": "mid",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 1,
+        "mainParts": [
+          "legs",
+          "head"
+        ]
+      },
+      "file": "Happy Idle.fbx"
+    },
+    {
+      "id": "victory",
+      "mixamoName": "Victory",
+      "tags": {
+        "genre": [
+          "gesture"
+        ],
+        "energy": 3,
+        "tempoBand": [
+          "mid"
+        ],
+        "bodyParts": [
+          "arms"
+        ],
+        "locomotion": "in-place",
+        "loopable": false,
+        "facing": "front",
+        "sections": [
+          "outro"
+        ],
+        "mood": [
+          "triumphant"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "一回きりの決めポーズ。曲の終わりに。",
+      "analysis": {
+        "duration": 4.5,
+        "bpm": 186.7,
+        "period": 0.321,
+        "beats": 14,
+        "phase": 0.042,
+        "barPhase": 0.685,
+        "beatClarity": 0.09,
+        "strength": 0.47,
+        "travel": 0.04,
+        "hipsBounce": 0.097,
+        "yawRange": 16,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.42,
+          "legs": 0.17,
+          "torso": 0.06,
+          "hips": 0.14,
+          "head": 0.2
+        }
+      },
+      "derived": {
+        "tempoBand": "fast",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 2,
+        "mainParts": [
+          "arms"
+        ]
+      },
+      "file": "Victory.fbx"
+    },
+    {
+      "id": "waving",
+      "mixamoName": "Waving",
+      "tags": {
+        "genre": [
+          "gesture"
+        ],
+        "energy": 1,
+        "tempoBand": [
+          "slow",
+          "mid"
+        ],
+        "bodyParts": [
+          "arms"
+        ],
+        "locomotion": "in-place",
+        "loopable": true,
+        "facing": "front",
+        "sections": [
+          "intro",
+          "outro"
+        ],
+        "mood": [
+          "cute",
+          "chill"
+        ]
+      },
+      "tagSource": "guess",
+      "notes": "手を振る。冒頭のあいさつや締めに。",
+      "analysis": {
+        "duration": 0.53,
+        "bpm": 112.5,
+        "period": 0.533,
+        "beats": 1,
+        "phase": 0.329,
+        "barPhase": 0.329,
+        "beatClarity": 0.05,
+        "strength": 0.35,
+        "travel": 0,
+        "hipsBounce": 0.003,
+        "yawRange": 3,
+        "yawNet": 0,
+        "loopDeg": 0,
+        "bodyShare": {
+          "arms": 0.56,
+          "legs": 0.1,
+          "torso": 0.11,
+          "hips": 0.12,
+          "head": 0.11
+        }
+      },
+      "derived": {
+        "tempoBand": "mid",
+        "locomotion": "in-place",
+        "loopable": true,
+        "turning": false,
+        "energy": 2,
+        "mainParts": [
+          "arms"
+        ]
+      },
+      "file": "Waving.fbx"
+    }
+  ],
+  "analyzedWith": {
+    "vrm": "oomofu.vrm",
+    "date": "2026-10-26"
+  }
+}
