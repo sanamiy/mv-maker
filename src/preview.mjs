@@ -6,9 +6,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MIME } from './fsurl.mjs';
 import { listenFree } from './net.mjs';
+import { ensureSceneMotions } from './motions.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const scene = path.resolve(process.argv[2] || 'examples/demo/scene.json');
+await ensureSceneMotions(scene);
 const fsUrl = p => '/@fs' + p.split(path.sep).map(encodeURIComponent).join('/');
 
 const server = http.createServer((req, res) => {

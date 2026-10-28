@@ -72,7 +72,7 @@ new-song は音量の大きさから仮の区間（`low1` / `mid1` / `high1` …
 1. `node src/motions.mjs search --section <区間> --bpm <analysis.json の tempo> --facing front` で候補を出す（`--energy` で盛り上がりに合わせ、作品の使い道に合わせて `--license` を付ける）
 2. 何小節も続く区間は `--loop` で、ループできるものを優先する。ループできない動きは出番より長いものを選ぶか、区間を分けて別の動きをつなぐ
 3. 前の区間の動きを `--after <id>` に渡し、姿勢がつながるものを選ぶ
-4. scene.json に `{ "use": "clip", "motion": "<id>", "only": ["<区間>"] }` と書き、`node src/motions.mjs pull --scene songs/<名前>` で取ってくる
+4. scene.json に `{ "use": "clip", "motion": "<id>", "only": ["<区間>"] }` と書き（render / stills / preview が足りない動きを自動で取ってくる。先に取るなら `node src/motions.mjs pull --scene songs/<名前>`）
 5. `node src/check.mjs` の動きの警告（テンポが合わない・出番より短い）を直し、出てきたクレジットを概要欄の案に入れる
 
 ### 7. 試しに書き出して点検する

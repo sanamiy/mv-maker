@@ -6,6 +6,7 @@
 //   node src/motions.mjs pull --scene songs/<名前>   scene.json で使っている動きをまとめて取ってくる
 //   node src/motions.mjs update                open-vrma の一覧（catalog.jsonl）を取り直す
 //   node src/motions.mjs credits songs/<名前>  scene.json で使っている動きのクレジット文
+// render / stills / preview は、scene.json で使っている動きが手元に無ければ始める前に自動で取ってくる（ensureSceneMotions）
 // search のほかの条件: --kind --genre --mood --bodyParts --locomotion --loop --in-place
 //   --after <id>（直前の動き。姿勢がつながるものを上に）--text <語> --max-duration 秒 --limit 件数 --json
 // open-vrma の取得元は OPEN_VRMA_REPO（既定 Sanami/open-vrma）。非公開のあいだは HF_TOKEN が要る
@@ -48,6 +49,23 @@ export function sceneMotionIds(scene) {
   return [...new Set((scene.character?.motions ?? []).filter(m => m.use === 'clip' && m.motion).map(m => m.motion))];
 }
 const readScene = p => { const f = fs.statSync(p).isDirectory() ? path.join(p, 'scene.json') : p; return { scene: JSON.parse(fs.readFileSync(f, 'utf8')), dir: path.dirname(path.resolve(f)) }; };
+
+// scene.json で id 指定した動きのうち、手元に無いものを取ってくる。motionLibraries で別の一覧を使うときは何もしない
+// 取れなかったものは警告だけ出す（読み込みのときに、取ってくる方法つきのエラーになる）
+export async function ensureSceneMotions(scenePath) {
+  const { scene } = readScene(scenePath);
+  const ids = sceneMotionIds(scene);
+  if (!ids.length || scene.motionLibraries) return;
+  const catalog = path.join(OPEN_VRMA_DIR, 'catalog.jsonl');
+  const lib = fs.existsSync(catalog) ? await loadLibrary([{ url: dirUrl(OPEN_VRMA_DIR) }], readText) : null;
+  const missing = ids.filter(id => { const r = lib?.find(id); return !r || !fs.existsSync(path.join(OPEN_VRMA_DIR, r.file)); });
+  if (!missing.length) return;
+  console.log(`手元に無い動きを取ってきます: ${missing.join(', ')}`);
+  try {
+    if (missing.some(id => !lib?.find(id))) await update();
+    await pull(missing);
+  } catch (e) { console.error(`動きを取ってこられませんでした: ${e.message}`); }
+}
 
 async function pull(ids) {
   const lib = await loadLibrary([{ url: dirUrl(OPEN_VRMA_DIR), name: 'open-vrma' }], readText);

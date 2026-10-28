@@ -167,7 +167,7 @@ HTMLには「何を・いつ出すか」だけ、CSSには「どう見せるか�
 ```sh
 node src/motions.mjs search --section chorus --energy 4-5 --bpm 128 --facing front   # 条件で探す
 node src/motions.mjs show cmu_60_01                                                  # メタデータを見る
-node src/motions.mjs pull --scene songs/<名前>                                       # scene.json で使う動きを取ってくる
+node src/motions.mjs pull --scene songs/<名前>                                       # scene.json で使う動きを取ってくる（render / stills / preview も足りない分を自動で取ってくる）
 node src/motions.mjs credits songs/<名前>                                            # クレジット文
 ```
 
