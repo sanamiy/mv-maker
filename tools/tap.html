@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>歌詞タップ</title>
+<style>
+  :root { color-scheme: dark; --accent: #ff4d8d; }
+  body { margin: 0; font: 15px/1.5 system-ui, sans-serif; background: #15141f; color: #e8e6f0; }
+  header { position: sticky; top: 0; background: #1d1b2c; padding: 10px 16px; border-bottom: 1px solid #333; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; z-index: 1; }
+  audio { width: 420px; max-width: 100%; }
+  .help { font-size: 12px; color: #aaa; padding: 6px 16px; }
+  kbd { background: #333; border-radius: 3px; padding: 0 4px; font-size: 12px; }
+  ol { list-style: none; margin: 0; padding: 8px 16px 50vh; }
+  li { display: flex; gap: 12px; padding: 3px 8px; border-radius: 4px; cursor: pointer; }
+  li.tag { color: #8a86a8; font-size: 12px; cursor: default; padding-top: 10px; }
+  li .time { font-family: ui-monospace, monospace; color: #888; width: 190px; flex: none; white-space: nowrap; }
+  li.cursor { outline: 2px solid var(--accent); }
+  li.playing { background: #3a2440; }
+  li.done .time { color: #7fd1a8; }
+  button { background: #333; color: inherit; border: 1px solid #555; border-radius: 4px; padding: 3px 10px; cursor: pointer; }
+  #status { color: #7fd1a8; }
+</style>
+</head>
+<body>
+<header>
+  <audio id="audio" controls preload="auto"></audio>
+  <label>速さ <select id="rate"><option>1</option><option>0.75</option><option>0.5</option></select></label>
+  <label>遅れ補正 <input id="latency" type="number" step="0.01" value="0.05" style="width:4em">秒</label>
+  <button id="save">保存 (Ctrl+S)</button>
+  <span id="status"></span>
+</header>
+<div class="help">
+  曲を流しながら、各行の歌い出しで <kbd>Space</kbd>。行の終わり（間奏の前など）で <kbd>Enter</kbd>。
+  <kbd>Backspace</kbd> 1つ戻す ／ <kbd>P</kbd> 再生・停止 ／ <kbd>←</kbd><kbd>→</kbd> 2秒移動 ／ <kbd>↑</kbd><kbd>↓</kbd> 選ぶ行を変える ／
+  <kbd>,</kbd><kbd>.</kbd> 選んだ行の頭を0.05秒ずらす ／ 行をクリックでその少し前から再生
+</div>
+<ol id="list"></ol>
+<script type="module">
+const audio = document.getElementById('audio'), list = document.getElementById('list'), status = document.getElementById('status');
+const { items, times } = await (await fetch('/data')).json();
+audio.src = '/audio';
+const lines = items.filter(x => !x.tag);
+// lines[i] = { text, start, end }
+times.forEach((t, i) => { if (lines[i]) Object.assign(lines[i], t); });
+let cursor = Math.max(0, lines.findIndex(l => l.start == null)); if (lines.every(l => l.start != null)) cursor = 0;
+const fmt = t => (t == null ? '--:--.--' : `${String(Math.floor(t / 60)).padStart(2, '0')}:${(t % 60).toFixed(2).padStart(5, '0')}`);
+const els = [];
+for (const it of items) {
+  const li = document.createElement('li');
+  if (it.tag) { li.className = 'tag'; li.textContent = `[${it.tag}]`; }
+  else {
+    const i = els.length; els.push(li);
+    li.innerHTML = '<span class="time"></span><span class="text"></span>';
+    li.querySelector('.text').textContent = it.text;
+    li.onclick = () => { cursor = i; if (lines[i].start != null) audio.currentTime = Math.max(0, lines[i].start - 1); draw(); };
+  }
+  list.append(li);
+}
+function draw() {
+  const t = audio.currentTime;
+  lines.forEach((l, i) => {
+    const li = els[i], next = lines[i + 1]?.start;
+    li.querySelector('.time').textContent = fmt(l.start) + (l.end != null ? ' → ' + fmt(l.end) : '');
+    li.classList.toggle('done', l.start != null);
+    li.classList.toggle('cursor', i === cursor);
+    li.classList.toggle('playing', l.start != null && t >= l.start && t < (l.end ?? next ?? Infinity));
+  });
+}
+const keep = () => els[cursor]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+const now = () => Math.max(0, audio.currentTime - Number(document.getElementById('latency').value || 0) * audio.playbackRate);
+let dirty = false;
+const changed = () => { dirty = true; status.textContent = '未保存'; draw(); };
+document.getElementById('rate').onchange = e => { audio.playbackRate = Number(e.target.value); };
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); save(); return; }
+  const k = e.key;
+  if (k === ' ') {
+    e.preventDefault();
+    if (cursor >= lines.length) return;
+    const t = now(), prev = lines[cursor - 1];
+    if (prev && prev.end != null && prev.end > t) prev.end = null;
+    lines[cursor].start = Math.round(t * 1000) / 1000; lines[cursor].end = null; cursor = Math.min(lines.length, cursor + 1); keep(); changed();
+  } else if (k === 'Enter') {
+    e.preventDefault();
+    const last = lines[cursor - 1]; if (last) { last.end = Math.round(now() * 1000) / 1000; changed(); }
+  } else if (k === 'Backspace') {
+    e.preventDefault();
+    if (cursor > 0) { cursor--; const l = lines[cursor]; const back = l.start; l.start = l.end = null; if (back != null) audio.currentTime = Math.max(0, back - 2); keep(); changed(); }
+  } else if (k === 'p' || k === 'P') { audio.paused ? audio.play() : audio.pause(); }
+  else if (k === 'ArrowLeft') { e.preventDefault(); audio.currentTime = Math.max(0, audio.currentTime - 2); }
+  else if (k === 'ArrowRight') { e.preventDefault(); audio.currentTime += 2; }
+  else if (k === 'ArrowUp') { e.preventDefault(); cursor = Math.max(0, cursor - 1); keep(); draw(); }
+  else if (k === 'ArrowDown') { e.preventDefault(); cursor = Math.min(lines.length - 1, cursor + 1); keep(); draw(); }
+  else if ((k === ',' || k === '.') && lines[cursor]?.start != null) {
+    lines[cursor].start = Math.max(0, Math.round((lines[cursor].start + (k === ',' ? -0.05 : 0.05)) * 1000) / 1000);
+    audio.currentTime = Math.max(0, lines[cursor].start - 0.5); changed();
+  }
+});
+async function save() {
+  const out = [];
+  lines.forEach(l => {
+    if (l.start == null) return;
+    out.push(`[${fmt(l.start)}]${l.text}`);
+    if (l.end != null) out.push(`[${fmt(l.end)}]`);
+  });
+  const r = await fetch('/save', { method: 'POST', body: out.join('\n') + '\n' });
+  status.textContent = r.ok ? `保存しました（${await r.text()}）` : '保存に失敗しました';
+  if (r.ok) dirty = false;
+}
+document.getElementById('save').onclick = save;
+addEventListener('beforeunload', e => { if (dirty) e.preventDefault(); });
+(function loop() { draw(); requestAnimationFrame(loop); })();
+</script>
+</body>
+</html>
