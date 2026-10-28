@@ -44,7 +44,7 @@ node src/render.mjs songs/my-song/scene.json songs/my-song/out/final.mp4        
 |---|---|
 | `src/new-song.mjs <名前> [--audio 曲] [--vrm モデル] [--title] [--credit]` | 1曲ぶんの作業フォルダを作る。曲を渡すと解析して、セクションの下書きも作る |
 | `src/analyze.mjs <曲> <analysis.json>` | 曲を解析する（拍・小節頭・音量・盛り上がり区間） |
-| `src/preview.mjs <scene.json>` | ブラウザで音付きプレビュー |
+| `src/preview.mjs <scene.json>` | ブラウザで音付きプレビュー。下のバーでシーク・セクションの頭へジャンプ（↑↓ でも）。scene.json や HTML/CSS を保存すると、再生位置はそのままで自動で読み込み直す |
 | `src/render.mjs <scene.json> <out.mp4> [--scale 0.5] [--frames N] [--workers N] [--encoder hw]` | mp4 に書き出す（Mac / Windows では GPU を使い、複数のブラウザで並列に描く。下の「書き出しの速さ」） |
 | `src/stills.mjs <scene.json> <sheet.png> [--every 4]` | 4秒ごとなどの静止画の一覧（書き出し前の確認用） |
 | `src/check.mjs <フォルダ> [--video 動画]` | 素材・時刻・セクションの点検と、要所のコマ一覧・QA記録の作成。エラーがあれば終了コード 1 |
