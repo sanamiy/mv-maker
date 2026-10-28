@@ -23,7 +23,28 @@ function tempo(sig, fps) {
   if (!bestLag) return { bpm: null, beatConfidence: 0 };
   let bpm = 60 * fps / bestLag;
   while (bpm < 60) bpm *= 2; while (bpm > 180) bpm /= 2;
-  return { bpm: Math.round(bpm), beatConfidence: r2(best) };
+  bpm = Math.round(bpm);
+  // 拍の位相: 拍の間隔ごとに動きの強さを足し合わせ、いちばん強くなるずれを最初の拍にする
+  const period = 60 * fps / bpm; let bestPhase = 0, bestSum = -Infinity;
+  for (let ph = 0; ph < period; ph++) { let sum = 0, c = 0; for (let t = ph; t < n; t += period) { sum += x[Math.round(t)] ?? 0; c++; } if (sum / c > bestSum) { bestSum = sum / c; bestPhase = ph; } }
+  return { bpm, beatConfidence: r2(best), firstBeat: +((bestPhase + 1) / fps).toFixed(3) };
+}
+
+// 足の接地: つま先が床から 5cm 以内で、水平の速さが 0.4m/s 未満の間。0.1 秒未満の接地・離地はならす
+function contacts(toe, fps) {
+  const n = toe.length, on = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const j = Math.max(0, i - 1), k = Math.min(n - 1, i + 1);
+    const v = Math.hypot(toe[k][0] - toe[j][0], toe[k][2] - toe[j][2]) * fps / Math.max(1, k - j);
+    on[i] = toe[i][1] < 0.05 && v < 0.4;
+  }
+  const minRun = Math.round(fps * 0.1);
+  for (const val of [false, true]) { // 短い離地を埋めてから、短い接地を消す
+    let i = 0; while (i < n) { if (on[i] !== val) { i++; continue; } let j = i; while (j < n && on[j] === val) j++; if (j - i < minRun && i > 0 && j < n) for (let k = i; k < j; k++) on[k] = !val; i = j; }
+  }
+  const spans = []; let i = 0;
+  while (i < n) { if (!on[i]) { i++; continue; } let j = i; while (j < n && on[j]) j++; spans.push([+(i / fps).toFixed(3), +((j - 1) / fps).toFixed(3)]); i = j; }
+  return spans;
 }
 
 export function analyze({ fps, frameCount: n, rot, bones, track, hipRest }) {
@@ -54,5 +75,6 @@ export function analyze({ fps, frameCount: n, rot, bones, track, hipRest }) {
     airborne: r2(air / n), lowHips: r2(low / n),
     loopPoseDiffDeg: Math.round(loopDiff),
     ...tempo(sig, fps),
+    contacts: { left: contacts(track.leftToe, fps), right: contacts(track.rightToe, fps) },
   };
 }

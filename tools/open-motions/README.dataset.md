@@ -34,10 +34,14 @@ Freely redistributable motion data (CMU Graphics Lab Motion Capture Database and
 
 ```
 cmu/<subject>_<trial>.vrma          CMU mocap（例 cmu/60_01.vrma = サルサ）
-quaternius/ual1/<name>.vrma         Quaternius Universal Animation Library
-quaternius/ual2/<name>.vrma         Quaternius Universal Animation Library 2
-catalog.jsonl / catalog.csv         1行1モーションの一覧（タグ・解析値）
+cmu/<subject>_<trial>.motion.json   そのモーションのメタデータ（ライセンス・タグ・拍・接地など）
+quaternius/ual1/<name>.vrma         Quaternius Universal Animation Library（+ .motion.json）
+quaternius/ual2/<name>.vrma         Quaternius Universal Animation Library 2（+ .motion.json）
+catalog.jsonl / catalog.csv         1行1モーションの一覧（.motion.json から生成）
+LICENSE.md                          素材ごとのライセンスとクレジット
 ```
+
+各 VRMA の隣の `.motion.json` が正本のメタデータです（形式は Motion Meta 0.1）。ライセンス（SPDX の識別子・そのまま貼れるクレジット文・作者・出典）は1本ごとにここに書いてあります。
 
 ### 使い方（three-vrm）
 
@@ -56,23 +60,27 @@ hf download {{REPO}} --repo-type dataset --include "catalog.csv"     # 一覧だ
 hf download {{REPO}} --repo-type dataset --include "cmu/60_*.vrma"   # 必要な分だけ
 ```
 
-## タグ（catalog の列）
+## メタデータ（.motion.json）と一覧の列
 
-| 列 | 意味 |
+| 項目 | 意味 |
 |---|---|
-| `kind` | dance / idle / walk / run / jump / gesture / sit / sports / acrobatics / action / other。元の説明文・名前のキーワードから付けています |
-| `genre` | ダンスのジャンル（salsa / charleston / modern / indian / breakdance / lambada / pop / chicken-dance / casual） |
-| `energy` | 1 ほぼ静止 ～ 5 全身で激しい（手足と頭の平均の速さから） |
-| `bpm`, `tempoBand` | 動きの周期から推定した拍（slow 90 未満 / mid 90〜120 / fast 120 超）。周期がはっきりしない動きは空 |
-| `bodyParts` | full / upper（脚がほぼ動かず、その場で上半身だけ動くもの） |
-| `locomotion` | in-place / stepping / traveling / spinning |
-| `loopable` | 最初と最後のポーズが近く、そのままループできる |
-| `floorWork`, `airborne` | 腰を低く落とす時間が長い／両足が浮く時間が長い |
-| `fingers` | 指の動きを含む（Quaternius のみ） |
-| `rootMotion` | 腰の移動を含む（CMU は全部、Quaternius は `_RM` 付きのもの） |
-| `analysis` | タグの元になった解析値（catalog.jsonl のみ） |
+| `license` | `spdx`（`CC0-1.0` / `LicenseRef-CMU-Mocap`）、`attribution`（クレジット文）、`authors`、`source`（元の素材と ID） |
+| `tags.kind` | dance / idle / walk / run / jump / gesture / sit / sports / acrobatics / action / other。元の説明文・名前のキーワードから |
+| `tags.genre` | ダンスのジャンル（salsa / charleston / modern / indian / breakdance / lambada / pop / chicken-dance / casual） |
+| `tags.energy` | 1 ほぼ静止 ～ 5 全身で激しい（手足と頭の平均の速さから） |
+| `tags.bodyParts` | full / upper（脚がほぼ動かず、その場で上半身だけ動くもの） |
+| `tags.locomotion` | in-place / stepping / traveling / spinning |
+| `tags.floorWork`, `tags.airborne` | 腰を低く落とす時間が長い／両足が浮く時間が長い |
+| `tags.fingers` | 指の動きを含む（Quaternius のみ） |
+| `tags.rootMotion` | 腰の移動を含む（CMU は全部、Quaternius は `_RM` 付きのもの） |
+| `tempo` | 動きの周期から推定した拍（`bpm`・`firstBeat`・`confidence`）。周期がはっきりしなければ `bpm: null` |
+| `loop` | 最初と最後のポーズが近いものだけ。無いものはループさせない |
+| `events` / `ranges` | 足の接地・離地（`contact` / `lift`）と、足を固定してよい区間（`footLock`） |
+| `x.openMotions` | タグの元になった解析値 |
 
-タグは自動で付けたもので、間違いを含みます。特に `bpm` は音楽ではなく動きから推定した値です。
+一覧（catalog）の列は `id, file, name, description, duration, license, attribution, kind, genre, energy, bodyParts, locomotion, floorWork, airborne, fingers, rootMotion, bpm, tempoBand, loopable, hasTiming` です。
+
+タグ・拍・接地はすべて自動推定で（`provenance` が `auto`）、間違いを含みます。特に `bpm` は音楽ではなく動きから推定した値です。
 
 ## 変換について
 
@@ -82,6 +90,8 @@ hf download {{REPO}} --repo-type dataset --include "cmu/60_*.vrma"   # 必要な
 - 変換ツール: [mv-maker / tools/open-motions](https://github.com/sanamiy/mv-maker/tree/main/tools/open-motions)
 
 ## ライセンスとクレジット
+
+詳しくは [LICENSE.md](LICENSE.md) を見てください。1本ごとの条件とクレジット文は各 `.motion.json` の `license` にあります。
 
 **Quaternius Universal Animation Library 1・2（`quaternius/`）** — CC0 1.0 Universal。クレジット不要です。Animations by Quaternius (https://quaternius.com/)。
 

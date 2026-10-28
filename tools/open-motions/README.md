@@ -20,6 +20,6 @@ tools/open-motions/build.sh ~/open-motions-work 4   # 作業フォルダ, 並列
 | `quantize.mjs` | 回転を 16bit 整数にして容量を約半分にする（見た目はほぼ変わらない） |
 | `vrma.mjs` | VRM 正規化ボーンの回転列を VRMA（glTF + `VRMC_vrm_animation`）に書き出す |
 | `analyze.mjs` | 移動・回転・手足の動き・拍・ループ可否などの解析値 |
-| `catalog.mjs` | 解析値と元の説明文から `catalog.jsonl` / `catalog.csv` を作る |
+| `metadata.mjs` | 解析値と元素材の情報から、VRMA ごとのメタデータ `<name>.motion.json`（Motion Meta 0.1）と、一覧 `catalog.jsonl` / `catalog.csv` を作る |
 
 VRMA のレストポーズは VRM 1.0 の正規化 Tポーズ（全ボーン回転なし）で、元データの Tポーズからの差分を各ボーンの回転として書き出します。three-vrm-animation の `createVRMAnimationClip` でそのまま再生できます。

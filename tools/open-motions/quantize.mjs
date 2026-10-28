@@ -1,6 +1,8 @@
 // VRMA の回転トラックを 16bit 整数（normalized SHORT）にして容量を約半分にする。位置・時刻は float のまま
+// node quantize.mjs <フォルダ>    フォルダ以下の .vrma をすべて上書き（16bit 化済みのものは飛ばす）
 // node quantize.mjs in.vrma out.vrma
 import fs from 'node:fs';
+import path from 'node:path';
 
 export function quantizeVRMA(glb) {
   const jsonLen = glb.readUInt32LE(12);
@@ -34,6 +36,11 @@ export function quantizeVRMA(glb) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const [,, inFile, outFile] = process.argv;
-  fs.writeFileSync(outFile, quantizeVRMA(fs.readFileSync(inFile)));
+  const [,, a, b] = process.argv;
+  if (fs.statSync(a).isDirectory()) {
+    const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith('.vrma') ? [path.join(d, e.name)] : []);
+    let n = 0;
+    for (const f of walk(a)) { const buf = fs.readFileSync(f); if (buf.includes('"normalized":true')) continue; fs.writeFileSync(f, quantizeVRMA(buf)); n++; }
+    console.error('16bit 化:', n, '本');
+  } else fs.writeFileSync(b, quantizeVRMA(fs.readFileSync(a)));
 }
