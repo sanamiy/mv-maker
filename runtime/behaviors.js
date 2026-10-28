@@ -18,6 +18,15 @@ const env = (p, attack = 0.12) => (p < attack ? smooth(p / attack) : Math.pow(1 
 // 決定的な疑似乱数（同じ入力なら必ず同じ値）
 export function hash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
 
+// only / except で選んだ区間が続くまとまりの、始まりの時刻（どれも選ばれていなければ 0）
+function runStart(sections, i, o) {
+  if (!sections || (!o.only && !o.except)) return 0;
+  const on = s => !!s && (o.only ? o.only.includes(s.name) : !o.except.includes(s.name));
+  let j = Math.max(0, i);
+  while (j > 0 && on(sections[j - 1])) j--;
+  return sections[j]?.from ?? 0;
+}
+
 export const behaviors = {
   // 腕を下ろした立ち姿勢と呼吸
   idle(vrm, m, o) {
@@ -176,20 +185,35 @@ export const behaviors = {
   mixamo(vrm, m, o, state) {
     const clip = state.clip, info = state.info;
     if (!clip) return;
-    const dur = clip.duration;
+    // ループする区間（Motion Meta の loop。なければ全体）
+    const [lin, lout] = state.loopRange ?? [0, clip.duration];
+    const dur = lout - lin;
+    const sync = o.sync ?? state.sync;
     let time;
-    if (o.sync === 'time') time = (m.t - (o.start ?? 0)) * (o.speed ?? 1);
-    else if (o.sync === 'stretch' || !info) {
+    if (sync === 'time') time = (m.t - (o.start ?? 0)) * (o.speed ?? 1);
+    else if (sync === 'stretch' || !info) {
       const beats = o.beats ?? Math.max(1, Math.round(dur / m.beatPeriod));
-      time = ((m.steadyBeat - (o.offset ?? 0)) / beats) * dur;
+      time = lin + ((m.steadyBeat - (o.offset ?? 0)) / beats) * dur;
     } else {
-      const k = o.motionBeat ?? [0.5, 1, 2].reduce((best, c) => (Math.abs(Math.log(m.beatPeriod * c / info.period)) < Math.abs(Math.log(m.beatPeriod * best / info.period)) ? c : best), 1);
+      const ks = state.halfDouble === false ? [1] : [0.5, 1, 2];
+      const k = o.motionBeat ?? ks.reduce((best, c) => (Math.abs(Math.log(m.beatPeriod * c / info.period)) < Math.abs(Math.log(m.beatPeriod * best / info.period)) ? c : best), 1);
+      state.lastK = k;
       const songBeats = m.steadyBeat - (state.barOffset ?? 0) - (o.offset ?? 0);
       time = info.barPhase + (songBeats / k) * info.period;
     }
-    time = o.loop === false ? Math.min(Math.max(0, time), dur) : ((time % dur) + dur) % dur;
+    const loop = o.loop ?? state.loop ?? true;
+    if (loop === false && sync !== 'time') {
+      // 1回だけ再生する動きは、出番（only / except で選んだ区間が続くまとまり）の頭から数える。出番の頭に動きの小節頭が来る
+      const songBeats = (m.t - (o.start ?? runStart(state.sections, m.sectionIndex, o))) / m.beatPeriod - (o.offset ?? 0);
+      time = info && sync !== 'stretch' ? info.barPhase + (songBeats / (o.motionBeat ?? state.lastK ?? 1)) * info.period : lin + songBeats * m.beatPeriod;
+    }
+    time = loop === false ? Math.min(Math.max(0, time), clip.duration) : lin + ((((time - lin) % dur) + dur) % dur);
     applyMixamo(clip, time, (o.weight ?? 1) * (m.weight ?? 1), o);
   },
+
+  // VRMA などライブラリの動き。{ "use": "clip", "motion": "<id>" }（open-vrma の一覧から引く）か { "use": "clip", "file": "x.vrma" }
+  // 再生のしかた・パラメータは mixamo と同じ。隣の .motion.json があれば、拍・小節頭・ループ区間・伸び縮みの可否をそこから取る
+  clip(vrm, m, o, state) { behaviors.mixamo(vrm, m, o, state); },
 
   // ランダムっぽいが決定的なまばたき（表情の blink は他の表情より後に上書き）
   blink(vrm, m, o) {

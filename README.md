@@ -160,6 +160,28 @@ HTMLには「何を・いつ出すか」だけ、CSSには「どう見せるか�
 
 モーションには `"only": ["chorus"]` / `"except": ["pre-chorus"]` を書くと、そのセクションだけ（以外だけ）で動きます。
 
+### open-vrma の動きを使う
+
+[open-vrma](https://huggingface.co/datasets/Sanami/open-vrma)（CMU mocap・Quaternius を VRMA に変換した再配布できる動きの一覧）から、条件で探して id で使えます。どの VRM にもそのまま当たります。
+
+```sh
+node src/motions.mjs search --section chorus --energy 4-5 --bpm 128 --facing front   # 条件で探す
+node src/motions.mjs show cmu_60_01                                                  # メタデータを見る
+node src/motions.mjs pull --scene songs/<名前>                                       # scene.json で使う動きを取ってくる
+node src/motions.mjs credits songs/<名前>                                            # クレジット文
+```
+
+`search` の条件: `--kind` `--genre` `--mood` `--bodyParts` `--facing` `--locomotion` `--license cc0,cc-by,cmu` `--section` `--energy 4-5` `--bpm <曲のBPM>`（伸び縮みで合わせられるものだけ）`--loop` `--in-place` `--after <直前の動きのid>`（姿勢がつながるものを上に）`--text <語>` `--limit` `--json`。初回は一覧（catalog.jsonl）を `assets/open-vrma/` に取ってきます。非公開のあいだは `HF_TOKEN` が要ります（取得元は `OPEN_VRMA_REPO`、既定 `Sanami/open-vrma`）。
+
+```jsonc
+{ "use": "clip", "motion": "cmu_49_02", "inPlace": true, "only": ["chorus"] },
+{ "use": "clip", "file": "../../my/dance.vrma" }   // 一覧に無い VRMA を直接使う（隣に .motion.json があれば読む）
+```
+
+パラメータは Mixamo と同じです（`beats` `offset` `sync` `weight` `inPlace` `faceFront` `hips` `mask` `loop` `motionBeat`）。動きの隣のメタデータ（`.motion.json`、Motion Meta 0.1）から、動きの拍・小節頭・ループ区間・伸び縮みの可否を読みます。ループ区間の無い動きは、出番（`only` で選んだ区間が続くまとまり）の頭から1回だけ再生して最後の姿勢で止まります。`node src/check.mjs` が、一覧に無い・まだ取ってきていない・テンポが合わない・出番より短い動きを知らせ、使った動きのクレジットを出します。
+
+別の一覧を使うときは scene.json に `"motionLibraries": ["../../path/to/dataset"]`（`catalog.jsonl` のあるフォルダ）を書きます。
+
 ### Mixamo のモーションを使う
 
 [Mixamo](https://www.mixamo.com/) の動きを VRM に当てはめて使えます（three-vrm 公式サンプルと同じ変換）。
@@ -241,6 +263,7 @@ src/render.mjs       scene.json → mp4（Playwright + FFmpeg）
 src/preview.mjs      ブラウザ確認用のローカルサーバー（127.0.0.1 のみ、空きポートを自動で選ぶ）
 src/new-song.mjs     1曲ぶんの作業フォルダを作る
 src/check.mjs        点検（qa.md と contact.png）
+src/motions.mjs      open-vrma の動きを探す・取ってくる・クレジットを出す
 templates/song/      new-song がコピーするひな形
 runtime/player.js    ブラウザ側の描画。frame(i) で i フレーム目を描く
 runtime/layers.js    HTML/CSS のレイヤーを決定的に canvas へ描く
@@ -248,6 +271,8 @@ runtime/mv.css       最初から使えるCSSの部品
 runtime/timeline.js  時刻 → 拍・小節・セクション・表情の補間
 runtime/behaviors.js モーション集
 runtime/mixamo.js    Mixamo の FBX を VRM 用に変換して再生
+runtime/vrma.js      VRMA を読み、Mixamo と同じ形にして再生（メタデータから拍の情報も作る）
+runtime/library.js   動きの一覧を読み、id で引く・条件で探す（src/motions.mjs と共通）
 tools/               テスト曲の生成、サンプルVRMの取得、Mixamo の動きのカタログ更新
 ```
 
