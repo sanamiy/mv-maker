@@ -35,5 +35,8 @@ assets/mixamo/*
 *.pmd
 assets/cmu/
 
+# open-vrma から取ってきた動き（node src/motions.mjs pull。元は Hugging Face）
+assets/open-vrma
+
 # 曲ごとの作業フォルダ（曲・歌詞・制作物は各自のもの）
 songs/

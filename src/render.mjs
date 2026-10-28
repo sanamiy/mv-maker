@@ -18,6 +18,7 @@ import { fromUrl } from './fsurl.mjs';
 import { startServer, fsPath } from './server.mjs';
 import { acceptWebSocket } from './ws.mjs';
 import { angleBackend, gpuArgs, pickEncoder, autoWorkers } from './gpu.mjs';
+import { ensureSceneMotions } from './motions.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -32,6 +33,7 @@ const [scenePath, outPath = 'out/out.mp4'] = args;
 if (!scenePath) { console.error('usage: node src/render.mjs scene.json out.mp4'); process.exit(1); }
 
 const scene = JSON.parse(fs.readFileSync(scenePath, 'utf8'));
+await ensureSceneMotions(scenePath);
 const W = Math.round((scene.width ?? 1280) * scale / 2) * 2, H = Math.round((scene.height ?? 720) * scale / 2) * 2;
 
 // 書き出し係（ブラウザ）ごとに WebSocket の口 /frames/<k> を用意し、届いたフレームをその係の FFmpeg へ書く。

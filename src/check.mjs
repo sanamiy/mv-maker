@@ -7,6 +7,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { buildSections } from '../runtime/timeline.js';
 import { parseTime } from '../runtime/layers.js';
+import { tempoFit } from '../runtime/library.js';
+import { openLibrary } from './motions.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, def) => { const i = args.indexOf(name); if (i < 0) return def; const v = args[i + 1]; args.splice(i, 2); return v; };
@@ -60,6 +62,35 @@ if (analysis) {
     if (Math.abs(near - s.from) > 0.12) warnings.push(`セクション「${s.name}」(${s.from}s) が小節の頭からずれています。近い小節頭は ${near}s`);
   }
   notes.push(`セクション: ${sections.map(s => `${fmt(s.from)} ${s.name}（energy ${s.energy ?? 1}）`).join(' / ')}`);
+}
+
+// ---- ライブラリの動き（{ "use": "clip", "motion": "<id>" }） ----
+const clips = (scene.character?.motions ?? []).filter(m => m.use === 'clip');
+if (clips.length) {
+  const lib = await openLibrary(scene, dir);
+  const credits = new Set();
+  for (const c of clips) {
+    if (!c.motion) { if (c.file && !exists(c.file)) errors.push(`動きのファイルが見つかりません: ${c.file}`); continue; }
+    const row = lib.find(c.motion);
+    if (!row) { errors.push(`動き「${c.motion}」が一覧にありません（node src/motions.mjs search で探す）`); continue; }
+    const file = row.url.startsWith('file:') ? new URL(row.url).pathname : null;
+    if (file && !fs.existsSync(decodeURIComponent(file))) errors.push(`動き「${c.motion}」がまだ手元にありません（node src/motions.mjs pull --scene ${path.relative(process.cwd(), dir) || '.'}）`);
+    if (row.attribution) credits.add(row.attribution);
+    if (analysis && !c.sync) {
+      const fit = tempoFit(row, analysis.tempo);
+      if (fit && !fit.ok) warnings.push(`動き「${c.motion}」(${Math.round(row.bpm)} BPM) を曲 (${analysis.tempo} BPM) に合わせると速さが ×${fit.rate} になり、伸び縮みの範囲を超えます`);
+      if (row.bpm == null) notes.push(`動き「${c.motion}」は拍がはっきりしないので、元の長さに近い拍数に伸び縮みさせて再生します`);
+    }
+    // ループできない動きは出番の頭から1回だけ再生し、終わると最後の姿勢で止まる
+    if (!row.loopable && c.loop !== true && sections.length) {
+      const on = s => (c.only ? c.only.includes(s.name) : c.except ? !c.except.includes(s.name) : true);
+      const spans = []; sections.forEach((s, i) => { if (!on(s)) return; const end = sections[i + 1]?.from ?? analysis?.duration ?? s.from; const last = spans.at(-1); if (last && Math.abs(last[1] - s.from) < 0.01) last[1] = end; else spans.push([s.from, end]); });
+      const fit = analysis ? tempoFit(row, analysis.tempo) : null;
+      const len = row.duration / (fit?.rate ?? 1);
+      for (const [a, b] of spans) if (b - a > len + 0.5) warnings.push(`動き「${c.motion}」はループできず ${len.toFixed(1)}s で終わりますが、${fmt(a)}〜${fmt(b)} の ${(b - a).toFixed(1)}s に使っています（後半は止まります。区間を分けて別の動きをつなぐか、"loop": true でくり返す）`);
+    }
+  }
+  if (credits.size) notes.push(`動きのクレジット（概要欄などに入れる）: ${[...credits].join(' / ')}`);
 }
 
 // ---- 文字・図（data-start / data-end を持つ要素） ----
