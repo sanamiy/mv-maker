@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MIME } from './fsurl.mjs';
+import { listenFree } from './net.mjs';
 import { parseLrc } from './lyrics.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,7 +31,7 @@ function initialTimes() {
   return tokens.map((t, i) => ({ start: t.start, end: t.open || (tokens[i + 1] && Math.abs(tokens[i + 1].start - t.end) < 1e-3) ? null : t.end }));
 }
 
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x');
   if (u.pathname === '/') { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); fs.createReadStream(path.join(ROOT, 'tools/tap.html')).pipe(res); return; }
   if (u.pathname === '/data') { res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ items, times: initialTimes() })); return; }
@@ -54,6 +55,6 @@ http.createServer((req, res) => {
     return;
   }
   res.writeHead(404).end('not found');
-}).listen(Number(process.env.PORT || 5174), '127.0.0.1', function () {
-  console.log(`http://localhost:${this.address().port}/   （保存先: ${out}）`);
 });
+const port = await listenFree(server, 5174); // 使用中なら次の番号を使う
+console.log(`http://localhost:${port}/   （保存先: ${out}）`);

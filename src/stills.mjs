@@ -4,23 +4,24 @@
 //   node src/stills.mjs my/scene.json out/sheet.png                      # 4秒ごと
 //   node src/stills.mjs my/scene.json out/sheet.png --every 2 --from 30 --to 60
 //   node src/stills.mjs my/scene.json out/sheet.png --times 1.5,20,chorus#2
-// オプション: --cols 5  --scale 0.3（1枚の大きさ）  --gl metal（GPU を使う）
+// オプション: --cols 5  --scale 0.3（1枚の大きさ）  --gl auto（Mac は metal、Windows は d3d11 の GPU で描く。swiftshader で CPU）
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { toUrl, fromUrl, MIME } from './fsurl.mjs';
+import { gpuArgs } from './gpu.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const flag = (name, def) => { const i = args.indexOf(name); if (i < 0) return def; const v = args[i + 1]; args.splice(i, 2); return v; };
 const every = Number(flag('--every', 4)), from = Number(flag('--from', 0)), to = flag('--to', null);
 const times = flag('--times', null), cols = Number(flag('--cols', 5)), scale = Number(flag('--scale', 0.3));
-const gl = flag('--gl', 'swiftshader');
+const gl = flag('--gl', 'auto');
 const [scenePath, outPath = 'out/stills.png'] = args;
 if (!scenePath) { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\nimport')[0].replace(/^\/\/ ?/gm, '')); process.exit(1); }
 
-const browser = await chromium.launch({ args: [`--use-angle=${gl}`, '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ args: gpuArgs(gl) });
 const page = await browser.newPage();
 page.on('pageerror', e => console.error('[page]', e));
 await page.route('http://mv.local/**', route => {

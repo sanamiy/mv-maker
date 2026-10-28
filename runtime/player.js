@@ -168,7 +168,8 @@ class Player {
   }
 
   // フレーム i を描く。SpringBone などの物理は前フレームからの積み上げなので、必ず 0 から順に呼ぶ。
-  async frame(i) {
+  // draw: false なら動きや状態だけ進めて描かない（途中から書き出すとき、そこまでを早送りして同じ状態にするため）
+  async frame(i, draw = true) {
     if (i !== this.next) throw new Error(`frames must be sequential: expected ${this.next}, got ${i}`);
     this.next++;
     const dt = 1 / this.fps, t = i * dt;
@@ -214,10 +215,16 @@ class Player {
     this.key.color.copy(this._ca).lerp(this._cb, m.sectionBlend ?? 1);
 
     if (this.html) {
-      await this.html.update(m);
+      await this.html.update(m, draw);
       for (const l of this.html.layers) if (l.dirty) { l.texture.needsUpdate = true; l.dirty = false; }
     }
 
+    if (!draw) {
+      // 描くときは renderer.render の中で行列が更新され、次のフレームの物理がそれを使うので、ここでも同じことをする
+      this.three.updateMatrixWorld();
+      this.camera.updateMatrixWorld();
+      return m;
+    }
     this.renderer.setClearColor(this.scene.clearColor ?? '#000000', 1);
     this.renderer.clear();
     if (this.useShaderBg) this.renderer.render(this.bgScene, this.bgCamera);
@@ -262,12 +269,55 @@ class Player {
     return buf;
   }
 
-  // 書き出し用: n フレーム進めて、まとめて base64 で返す（往復回数を減らすため）
-  async renderBatch(start, n) {
-    const parts = [];
-    for (let i = start; i < Math.min(start + n, this.frameCount); i++) { await this.frame(i); parts.push(new Blob([this.pixels()])); }
-    const url = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(new Blob(parts)); });
-    return url.slice(url.indexOf(',') + 1);
+  // 書き出し用: start..end-1 を描き、生の RGBA（下から上の行順）を WebSocket で書き出し側へ順に送る。
+  // page.evaluate の戻り値で返すと base64 文字列の受け渡しだけで 1 フレーム 40ms ほどかかるため。
+  // GPU からの読み出しは PBO で非同期にし（前のフレームを受け取るあいだに次を描く）、
+  // 受け取り側の返事を待たずに inflight 枚まで先に描き進める（送信と描画を重ねる）。
+  // start が途中なら、そこまでは描かずに状態だけ進める（並列書き出しで、0 から書いたときと同じ絵にするため）
+  async streamTo(url, start, end, inflight = 3) {
+    while (this.next < start) await this.frame(this.next, false);
+    const ws = new WebSocket(url);
+    ws.binaryType = 'arraybuffer';
+    await new Promise((ok, ng) => { ws.onopen = ok; ws.onerror = () => ng(new Error(`cannot connect ${url}`)); });
+    // 返事（1フレームにつき1つ）が n 個そろうまで待つ
+    let acked = 0, sent = 0, wake = null;
+    ws.onmessage = () => { acked++; wake?.(); };
+    const until = async n => { while (acked < n) await new Promise(r => (wake = r)); };
+
+    const gl = this.renderer.getContext(), size = this.width * this.height * 4;
+    const pbos = [0, 1].map(() => {
+      const b = gl.createBuffer();
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, b);
+      gl.bufferData(gl.PIXEL_PACK_BUFFER, size, gl.STREAM_READ);
+      return { b, fence: null };
+    });
+    const sendPbo = async p => {
+      // fence が済んだのを確かめてから読む（確かめずに読むと Chromium の読み出し用の写しが使われず、遅くなる）
+      while (gl.clientWaitSync(p.fence, 0, 0) === gl.TIMEOUT_EXPIRED) await new Promise(r => setTimeout(r, 0));
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, p.b);
+      const px = new Uint8Array(size);
+      gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, px);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+      gl.deleteSync(p.fence); p.fence = null;
+      ws.send(px);
+      await until(++sent - inflight);
+    };
+    for (let i = start; i < end; i++) {
+      await this.frame(i);
+      const p = pbos[i & 1];
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, p.b);
+      gl.readPixels(0, 0, this.width, this.height, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+      p.fence = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+      gl.flush();
+      const prev = pbos[(i + 1) & 1];
+      if (prev.fence) await sendPbo(prev);
+    }
+    const last = pbos[(end - 1) & 1];
+    if (last.fence) await sendPbo(last);
+    await until(end - start);
+    for (const p of pbos) gl.deleteBuffer(p.b);
+    ws.close();
   }
 }
 

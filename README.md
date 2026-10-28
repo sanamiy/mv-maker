@@ -5,7 +5,8 @@
 - キャラは VRM（three.js + @pixiv/three-vrm）
 - シーンは JSON で宣言的に書く（どのモーションを使うか、どこがサビで何の表情か）
 - 曲は事前に解析して `analysis.json`（拍・小節頭・オンセット・音量包絡・盛り上がり区間）にしておく
-- 書き出しはヘッドレス Chromium で canvas 1枚だけを描き、フレーム時刻を `1/fps` ずつ決定的に進め、生ピクセルを FFmpeg の stdin に流す（PNG化もスクショもしない）
+- 書き出しはヘッドレス Chromium で canvas 1枚だけを描き、フレーム時刻を `1/fps` ずつ決定的に進め、生ピクセルを WebSocket で受けて FFmpeg の stdin に流す（PNG化もスクショもしない）
+- Mac は Metal、Windows は Direct3D 11 の GPU で描き、CPU のコア数に合わせて複数のブラウザで区間を分けて同時に描く
 - SpringBone（髪・服の揺れ）は 0 フレーム目から順に積み上げるので、何度書き出しても同じ映像になる
 
 ## 必要なもの
@@ -44,9 +45,35 @@ node src/render.mjs songs/my-song/scene.json songs/my-song/out/final.mp4        
 | `src/new-song.mjs <名前> [--audio 曲] [--vrm モデル] [--title] [--credit]` | 1曲ぶんの作業フォルダを作る。曲を渡すと解析して、セクションの下書きも作る |
 | `src/analyze.mjs <曲> <analysis.json>` | 曲を解析する（拍・小節頭・音量・盛り上がり区間） |
 | `src/preview.mjs <scene.json>` | ブラウザで音付きプレビュー |
-| `src/render.mjs <scene.json> <out.mp4> [--scale 0.5] [--frames N] [--gl metal]` | mp4 に書き出す（`--gl metal` は Mac などで GPU を使い、10倍ほど速い） |
+| `src/render.mjs <scene.json> <out.mp4> [--scale 0.5] [--frames N] [--workers N] [--encoder hw]` | mp4 に書き出す（Mac / Windows では GPU を使い、複数のブラウザで並列に描く。下の「書き出しの速さ」） |
 | `src/stills.mjs <scene.json> <sheet.png> [--every 4]` | 4秒ごとなどの静止画の一覧（書き出し前の確認用） |
 | `src/check.mjs <フォルダ> [--video 動画]` | 素材・時刻・セクションの点検と、要所のコマ一覧・QA記録の作成。エラーがあれば終了コード 1 |
+
+### 書き出しの速さ
+
+既定（`--gl auto --workers auto`）で、Mac は Metal、Windows は Direct3D 11 の GPU を使い、CPU のコア数に合わせて複数のブラウザで区間を分けて同時に描きます。
+各ブラウザは担当区間の頭まで「描かずに動きだけ進める」ので、1 個で頭から描いたときと同じ絵になります。
+
+```sh
+node src/render.mjs my/scene.json out/my.mp4 --workers 1          # 並列にしない
+node src/render.mjs my/scene.json out/my.mp4 --gl swiftshader     # GPU を使わない（どの PC でも同じ絵。とても遅い）
+node src/render.mjs my/scene.json out/my.mp4 --encoder hw         # エンコードも GPU（Mac: VideoToolbox、Windows: NVENC / QSV / AMF）
+```
+
+M1 MacBook（8コア）で 720p・30fps・HTML レイヤー3枚の曲（約4,200フレーム）の目安:
+
+| 設定 | 速さ |
+|---|---|
+| 以前の既定（swiftshader） | 約 1 fps（約 1 時間） |
+| 以前の `--gl metal` | 約 13 fps（約 5 分半） |
+| 今の既定（M1 では 2 並列） | 約 27 fps（約 2 分半） |
+| 今の `--workers 1` | 約 20 fps（約 3 分半） |
+
+Windows（Direct3D 11・NVENC / QSV / AMF）はまだ実機で試していません。うまく動かないときは `--gl swiftshader` や `--encoder x264` に戻せます。
+
+エンコード（libx264）は 400fps 以上出るので、ほとんど待ち時間になりません。`--encoder hw` は CPU を描画側に回したいときや、高解像度のときに使ってください。
+GPU が無い環境（クラウド等）では CPU で描くことになり、10 秒を超える書き出しは止まります（`--allow-cpu` で続行）。
+本番の書き出しは GPU のある実機（Mac / Windows / レンダリング用 PC）で行い、クラウドでは静止画の一覧や 10 秒までの短い確認だけにしてください（[AGENTS.md](AGENTS.md)）。
 
 ## 書き方
 
@@ -198,6 +225,9 @@ node tools/mixamo-catalog.mjs --missing  # ダウンロードしてほしい動�
 
 ### 用意してあるモーション
 
+> ここにある動き（`blink`・`mouth` 以外）は、関節を数式で回した**仮の動き**です。動きの元は Mixamo などのモーションデータにするのが基本で、
+> 再配布できるモーションデータ（CMU・Quaternius などを変換したもの）が入ったら、デモをそちらに差し替えてから消す予定です。
+
 | use | 内容 | 主なパラメータ |
 |---|---|---|
 | `idle` | 腕を下ろした立ち姿勢と呼吸 | `armDown` |
@@ -242,6 +272,9 @@ src/preview.mjs      ブラウザ確認用のローカルサーバー（127.0.0.
 src/new-song.mjs     1曲ぶんの作業フォルダを作る
 src/check.mjs        点検（qa.md と contact.png）
 templates/song/      new-song がコピーするひな形
+src/gpu.mjs          OS に合わせた GPU・エンコーダー・並列数の選び方
+src/server.mjs       ローカルファイルを見せる簡易サーバー（127.0.0.1 のみ）
+src/ws.mjs           書き出し時にフレームを受け取る最小限の WebSocket
 runtime/player.js    ブラウザ側の描画。frame(i) で i フレーム目を描く
 runtime/layers.js    HTML/CSS のレイヤーを決定的に canvas へ描く
 runtime/mv.css       最初から使えるCSSの部品
@@ -272,3 +305,4 @@ tools/               テスト曲の生成、サンプルVRMの取得、Mixamo �
 ## ライセンス
 
 コードは [MIT License](LICENSE) です。各自で用意した素材には、それぞれの素材の利用条件が適用されます。
+- GPU の無い環境（クラウド等）では SwiftShader で描くので 720p で 1〜2fps です。Mac / Windows の PC で書き出すと数十倍速くなります。
