@@ -14,10 +14,11 @@ const flag = (name, def) => { const i = args.indexOf(name); if (i < 0) return de
 const maxFrames = Number(flag('--frames', Infinity));
 const scale = Number(flag('--scale', 1));
 const batch = Number(flag('--batch', 4));
+const gl = flag('--gl', 'swiftshader'); // swiftshader（どこでも同じ絵） / metal・gl など（GPU があれば速い）
 const [scenePath, outPath = 'out/out.mp4'] = args;
 if (!scenePath) { console.error('usage: node src/render.mjs scene.json out.mp4'); process.exit(1); }
 
-const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ args: [`--use-angle=${gl}`, '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage();
 page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') console.error('[page]', m.text()); });
 page.on('pageerror', e => console.error('[page]', e));
@@ -36,6 +37,7 @@ const frames = Math.min(info.frameCount, maxFrames);
 console.log(`${info.width}x${info.height} ${info.fps}fps, ${frames} frames`);
 console.log(`expressions: ${info.expressions.join(', ')}`);
 console.log(`sections: ${info.sections.join(' / ')}`);
+for (const mx of info.mixamo ?? []) console.log(`mixamo: ${JSON.stringify(mx)}`);
 
 fs.mkdirSync(path.dirname(path.resolve(outPath)), { recursive: true });
 const ff = spawn('ffmpeg', [
