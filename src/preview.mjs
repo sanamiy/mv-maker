@@ -5,13 +5,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MIME } from './fsurl.mjs';
+import { listenFree } from './net.mjs';
+import { ensureSceneMotions } from './motions.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const scene = path.resolve(process.argv[2] || 'examples/demo/scene.json');
-const port = Number(process.env.PORT || 5173);
+await ensureSceneMotions(scene);
 const fsUrl = p => '/@fs' + p.split(path.sep).map(encodeURIComponent).join('/');
 
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x');
   const file = decodeURIComponent(u.pathname.replace(/^\/@fs/, ''));
   if (!u.pathname.startsWith('/@fs/') || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404).end('not found'); return; }
@@ -25,6 +27,6 @@ http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': type, 'Content-Length': stat.size, 'Accept-Ranges': 'bytes' });
     fs.createReadStream(file).pipe(res);
   }
-}).listen(port, '127.0.0.1', () => {
-  console.log(`http://localhost:${port}${fsUrl(path.join(ROOT, 'runtime/preview.html'))}?scene=${encodeURIComponent(fsUrl(scene))}`);
 });
+const port = await listenFree(server, 5173);
+console.log(`http://localhost:${port}${fsUrl(path.join(ROOT, 'runtime/preview.html'))}?scene=${encodeURIComponent(fsUrl(scene))}`);

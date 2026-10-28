@@ -10,7 +10,7 @@
 
 ## 必要なもの
 
-- Node.js 20 以上
+- Node.js 24 以上（`.nvmrc` あり。`nvm use` で合わせられます）
 - FFmpeg（`ffmpeg` にパスが通っていること）
 - `npx playwright install chromium`（初回のみ）
 
@@ -22,14 +22,31 @@ npx playwright install chromium
 npm run demo        # テスト曲の生成 → サンプルVRM取得 → 解析 → out/demo.mp4
 ```
 
-自分の曲で作るとき:
+## 自分の曲で作る
+
+1曲ごとに `songs/<名前>/` のフォルダを作って、その中で作業します（`songs/` は `.gitignore` 済み）。
+曲ごとにフォルダが分かれているので、複数の曲を同時に作れます（書き出しも並行で動きます）。
 
 ```sh
-node src/analyze.mjs my-song.mp3 my/analysis.json
-node src/render.mjs my/scene.json out/my.mp4
-node src/render.mjs my/scene.json out/quick.mp4 --scale 0.5 --frames 300   # 半分の解像度で先頭10秒だけ
-node src/preview.mjs my/scene.json   # ブラウザで音付きプレビュー（実時間に追従するので本番より粗い）
+node src/new-song.mjs my-song --audio ~/Music/my-song.mp3 --title "曲名" --credit "Music: ..."
+#   → songs/my-song/ に曲のコピー・解析結果・brief.md・scene.json・背景/文字/CSS のひな形ができる
+node src/preview.mjs songs/my-song/scene.json            # ブラウザで音付きプレビュー（空いているポートを自動で使う）
+node src/render.mjs songs/my-song/scene.json songs/my-song/out/test.mp4 --scale 0.5   # 半分の解像度で試し書き
+node src/check.mjs songs/my-song                         # 点検 → out/qa.md と out/contact.png（要所のコマ一覧）
+node src/render.mjs songs/my-song/scene.json songs/my-song/out/final.mp4             # 本番
 ```
+
+エージェントに作ってもらうときの手順と完成の条件は [`.claude/skills/make-mv/SKILL.md`](.claude/skills/make-mv/SKILL.md)
+（入口は [`AGENTS.md`](AGENTS.md)）にあります。
+
+| コマンド | すること |
+|---|---|
+| `src/new-song.mjs <名前> [--audio 曲] [--vrm モデル] [--title] [--credit]` | 1曲ぶんの作業フォルダを作る。曲を渡すと解析して、セクションの下書きも作る |
+| `src/analyze.mjs <曲> <analysis.json>` | 曲を解析する（拍・小節頭・音量・盛り上がり区間） |
+| `src/preview.mjs <scene.json>` | ブラウザで音付きプレビュー |
+| `src/render.mjs <scene.json> <out.mp4> [--scale 0.5] [--frames N] [--gl metal]` | mp4 に書き出す（`--gl metal` は Mac などで GPU を使い、10倍ほど速い） |
+| `src/stills.mjs <scene.json> <sheet.png> [--every 4]` | 4秒ごとなどの静止画の一覧（書き出し前の確認用） |
+| `src/check.mjs <フォルダ> [--video 動画]` | 素材・時刻・セクションの点検と、要所のコマ一覧・QA記録の作成。エラーがあれば終了コード 1 |
 
 ## 書き方
 
@@ -127,6 +144,80 @@ HTMLには「何を・いつ出すか」だけ、CSSには「どう見せるか�
 | `fade-out` | `data-end` の `--out-dur`（既定 0.3 秒）前から消える |
 | `beat-pulse` `beat-flash` `beat-sway` `beat-bob` | 拍に合わせて拡大 / 点滅 / 揺れ / 跳ねる（強さは `--amount`） |
 
+### カメラのショット・照明・床
+
+```jsonc
+"camera": { "position": [0, 1.3, 5], "target": [0, 1.15, 0], "fov": 30, "orbit": 0.35,
+  "shots": [                                   // at の時刻で切り替わる（書き方は data-start と同じ）
+    { "at": "chorus", "position": [0, 1.3, 5], "target": [0, 1.15, 0], "roll": -3 },
+    { "at": "bar 14", "position": [1, 0.45, 3.8], "target": [0, 1.45, 0],
+      "to": { "position": [0, 1.6, 3] }, "ease": "inOut" },   // 次のショットまで（または dur 秒で）to へ動く
+    { "at": "73.2", "position": [-0.6, 1.6, 4.2], "target": [-0.6, 1.4, 0], "to": { "roll": -14 }, "dur": 1, "ease": "out" }
+  ] },
+"light": { "color": "#ffffff", "intensity": 2.2, "ambient": 0.7, "rim": "#7fd8ff" },   // セクションに "light": "#ffc0c8" でキーライトの色を変えられる
+"floor": { "color": "#0d1020", "glow": "#ff2e4d", "radius": 1.5 }                      // false で床なし
+```
+
+モーションには `"only": ["chorus"]` / `"except": ["pre-chorus"]` を書くと、そのセクションだけ（以外だけ）で動きます。
+
+### open-vrma の動きを使う
+
+[open-vrma](https://huggingface.co/datasets/Sanami/open-vrma)（CMU mocap・Quaternius を VRMA に変換した再配布できる動きの一覧）から、条件で探して id で使えます。どの VRM にもそのまま当たります。
+
+```sh
+node src/motions.mjs search --section chorus --energy 4-5 --bpm 128 --facing front   # 条件で探す
+node src/motions.mjs show cmu_60_01                                                  # メタデータを見る
+node src/motions.mjs pull --scene songs/<名前>                                       # scene.json で使う動きを取ってくる（render / stills / preview も足りない分を自動で取ってくる）
+node src/motions.mjs credits songs/<名前>                                            # クレジット文
+```
+
+`search` の条件: `--kind` `--genre` `--mood` `--bodyParts` `--facing` `--locomotion` `--license cc0,cc-by,cmu` `--section` `--energy 4-5` `--bpm <曲のBPM>`（伸び縮みで合わせられるものだけ）`--loop` `--in-place` `--after <直前の動きのid>`（姿勢がつながるものを上に）`--text <語>` `--limit` `--json`。初回は一覧（catalog.jsonl）を `assets/open-vrma/` に取ってきます。非公開のあいだは `HF_TOKEN` が要ります（取得元は `OPEN_VRMA_REPO`、既定 `Sanami/open-vrma`）。
+
+```jsonc
+{ "use": "clip", "motion": "cmu_49_02", "inPlace": true, "only": ["chorus"] },
+{ "use": "clip", "file": "../../my/dance.vrma" }   // 一覧に無い VRMA を直接使う（隣に .motion.json があれば読む）
+```
+
+パラメータは Mixamo と同じです（`beats` `offset` `sync` `weight` `inPlace` `faceFront` `hips` `mask` `loop` `motionBeat`）。動きの隣のメタデータ（`.motion.json`、Motion Meta 0.1）から、動きの拍・小節頭・ループ区間・伸び縮みの可否を読みます。ループ区間の無い動きは、出番（`only` で選んだ区間が続くまとまり）の頭から1回だけ再生して最後の姿勢で止まります。`node src/check.mjs` が、一覧に無い・まだ取ってきていない・テンポが合わない・出番より短い動きを知らせ、使った動きのクレジットを出します。
+
+別の一覧を使うときは scene.json に `"motionLibraries": ["../../path/to/dataset"]`（`catalog.jsonl` のあるフォルダ）を書きます。
+
+### Mixamo のモーションを使う
+
+[Mixamo](https://www.mixamo.com/) の動きを VRM に当てはめて使えます（three-vrm 公式サンプルと同じ変換）。
+
+1. Mixamo で動きを選び、**Format: FBX Binary(.fbx) / Skin: Without Skin / Frames per Second: 30 / Keyframe Reduction: none** でダウンロード（歩く・走る系は **In Place** にチェック）
+2. `assets/mixamo/` に置く（git には入りません。Mixamo の素材はリポジトリに含めないでください）
+3. モーションに書く
+
+```jsonc
+{ "use": "mixamo", "file": "../assets/mixamo/Hip Hop Dancing.fbx", "only": ["chorus"] },
+{ "use": "headNod", "amount": 0.1 }   // 下に書いたモーションは Mixamo の上に足される
+```
+
+| パラメータ | 内容 |
+|---|---|
+| `beats` | 1ループを何拍に合わせるか（省略時は元の長さに近い拍数。曲のテンポに合わせて伸び縮みする） |
+| `offset` | 何拍目からループを始めるか |
+| `sync: "time"` / `speed` | 拍に合わせず元の速さ（の `speed` 倍）で再生 |
+| `weight` | 今の姿勢と混ぜる割合（0〜1）。`only` / `except` の境目でも自動でなめらかに混ざる |
+| `inPlace` / `faceFront` / `hips: false` | 腰の移動を止める / いつも正面を向かせる / 腰の位置を使わない |
+| `mask` | `["leftUpperArm", ...]` のように当てるボーンを絞る（腕だけ Mixamo、脚は手作り、など） |
+
+#### 動きのカタログ（`assets/mixamo/catalog.json`）
+
+MV に使えそうな Mixamo の動き（ダンス中心に28個）を、AI や人が選びやすいように タグ（ジャンル・エネルギー1〜5・合う曲のテンポ帯・主に動く部位・その場か移動か・ループ可否・向き・向くセクション・雰囲気）と解析値で引ける一覧です。形式は `assets/mixamo/catalog.schema.json`。Mixamo の FBX・説明文・サムネイルは入れず、動きの名前と自前のタグ・解析値だけを持ちます。
+
+```sh
+node tools/mixamo-catalog.mjs            # assets/mixamo/ の FBX を解析して analysis / derived を書き込み、まだ無い動きを一覧表示
+node tools/mixamo-catalog.mjs --missing  # ダウンロードしてほしい動きの一覧だけ出す
+```
+
+- `tags` は人（や AI）が付けたタグ。`tagSource: "guess"` は名前からの推測なので、動きを見て直したら `"reviewed"` にする
+- `analysis` の bpm・拍数・位相・強さ・移動量は `runtime/mixamo.js` の `analyzeMotion`（再生時に曲の拍へ合わせるのと同じ解析）。ほかにループのつながり・部位ごとの動きの割合・向きの変化を足している
+- `derived` は解析値から機械的に決めたタグ。`tags` と食い違うところは見直しの手がかりに
+- ファイル名は Mixamo の初期名のままか動きの名前（大文字小文字・空白は問わない）。別名なら `file` に書く
+
 ### 用意してあるモーション
 
 | use | 内容 | 主なパラメータ |
@@ -135,9 +226,19 @@ HTMLには「何を・いつ出すか」だけ、CSSには「どう見せるか�
 | `bounce` | 拍ごとに膝を曲げて沈む | `amount`（沈む量 m） |
 | `sway` | 2拍で左右に揺れる | `amount` |
 | `headNod` | 拍の頭でうなずく | `amount` |
-| `armSwing` | 左右交互に腕を振る。energy が `liftFrom` を超えると腕が上がる | `amount`, `liftFrom`, `lift` |
+| `armSwing` | 歩くように腕を前後に振る（肘は少し遅れる）。energy が `liftFrom` を超えると腕が横に上がる | `amount`, `liftFrom`, `lift` |
 | `blink` | 決定的なまばたき | `interval` |
 | `mouth` | 音量で口を開ける | `amount` |
+| `stepSide` | 拍ごとに左右へ体重移動 | `amount` |
+| `turn` | 小節単位で体の向きを左右に振る | `amount`, `speed` |
+| `pump` | 拍の頭で片腕ずつ突き上げ、次の拍までにゆっくり下ろす | `amount` |
+| `jump` | `every` 拍ごとに跳ぶ（しゃがむ→跳ぶ→着地で沈む） | `every`, `offset`, `height`, `arms` |
+| `headTilt` | `every` 拍ごとに首をかしげて止める | `every`, `amount` |
+| `wave` | 片手を上げて振る | `side`, `speed` |
+| `clap` | 胸の前で手拍子（既定は2拍目と4拍目） | `beats`, `width` |
+| `choreo` | 拍ごとにポーズ（`up` `v` `cross` `wide` `point` `down`）を切り替える振り付け | `poses`, `beatsPerPose`, `blend`, `amount` |
+
+`character.smoothing`（秒、例 `0.06`）を書くと、全ボーンがその時定数で少し遅れて追従し、動きの角が取れます。
 
 モーションを足すときは `runtime/behaviors.js` に関数を1つ追加します。引数の `m` には
 `beatPos`、`beatPhase`、`beatPulse`、`barPos` / `barPhase`、`loudness`、`onset`、`energy`、`section`、`t` が入っています。
@@ -159,13 +260,20 @@ SVG の foreignObject 経由で画像にして canvas に描いています。�
 ```
 src/analyze.mjs      音声 → analysis.json（FFmpegでデコード、スペクトルフラックスでオンセット、自己相関+全体フィットでテンポと拍）
 src/render.mjs       scene.json → mp4（Playwright + FFmpeg）
-src/preview.mjs      ブラウザ確認用のローカルサーバー（127.0.0.1 のみ）
+src/preview.mjs      ブラウザ確認用のローカルサーバー（127.0.0.1 のみ、空きポートを自動で選ぶ）
+src/new-song.mjs     1曲ぶんの作業フォルダを作る
+src/check.mjs        点検（qa.md と contact.png）
+src/motions.mjs      open-vrma の動きを探す・取ってくる・クレジットを出す
+templates/song/      new-song がコピーするひな形
 runtime/player.js    ブラウザ側の描画。frame(i) で i フレーム目を描く
 runtime/layers.js    HTML/CSS のレイヤーを決定的に canvas へ描く
 runtime/mv.css       最初から使えるCSSの部品
 runtime/timeline.js  時刻 → 拍・小節・セクション・表情の補間
 runtime/behaviors.js モーション集
-tools/               テスト曲の生成、サンプルVRMの取得
+runtime/mixamo.js    Mixamo の FBX を VRM 用に変換して再生
+runtime/vrma.js      VRMA を読み、Mixamo と同じ形にして再生（メタデータから拍の情報も作る）
+runtime/library.js   動きの一覧を読み、id で引く・条件で探す（src/motions.mjs と共通）
+tools/               テスト曲の生成、サンプルVRMの取得、Mixamo の動きのカタログ更新
 ```
 
 ## メモ
