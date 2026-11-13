@@ -3,7 +3,7 @@
 // 使い方:
 //   node src/lyrics.mjs build lyrics.txt --timing aligned.json -o lyrics.json [--analysis analysis.json] [--snap 0.5] [--hold 0.5]
 //   node src/lyrics.mjs build --timing song.lrc -o lyrics.json            # 歌詞テキスト無しで LRC だけから作る
-//   node src/lyrics.mjs export lyrics.json --format lrc|lrc-words|ass|html|sections [-o 出力] [--analysis analysis.json]
+//   node src/lyrics.mjs export lyrics.json --format lrc|lrc-words|ass|html|html-karaoke|sections [-o 出力] [--analysis analysis.json]
 //
 // lyrics.txt は Suno / Udio と同じ書き方で、[Verse 1] [Chorus] のような行がセクションの見出しになる。
 // --timing には次のどれかを渡す:
@@ -263,11 +263,14 @@ const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&
 // 文字レイヤー（scene.json の "layers"）用の HTML。data-start / data-end は秒。
 // 行 <p class="lyric"> は歌っている間だけ出る。単語 <span class="mv-word"> は歌われた瞬間に出て行の終わりまで残る
 // （本来の単語の終わりは data-word-end に入れてある）。
-export function toHtml(lyrics) {
+// karaoke: true（--format html-karaoke）なら、行の単語を最初から全部出しておき、単語ごとに data-mv-state（before / active / after）と
+// --progress（歌っている単語の進み 0〜1）が付く。runtime/mv.css の .karaoke で、歌った所から色が変わる
+export function toHtml(lyrics, { karaoke = false } = {}) {
   const rows = lyrics.lines.map(l => {
-    const words = joinParts(l.text, l.words).map(({ sep, w }) =>
-      `${esc(sep)}<span class="mv-word" data-start="${w.start.toFixed(3)}" data-end="${l.end.toFixed(3)}" data-word-end="${w.end.toFixed(3)}">${esc(w.text)}</span>`).join('');
-    return `<p class="lyric" data-section="${esc(l.section)}" data-start="${l.start.toFixed(3)}" data-end="${l.end.toFixed(3)}">${words}</p>`;
+    const words = joinParts(l.text, l.words).map(({ sep, w }) => karaoke
+      ? `${esc(sep)}<span class="mv-word" data-keep data-start="${w.start.toFixed(3)}" data-end="${w.end.toFixed(3)}">${esc(w.text)}</span>`
+      : `${esc(sep)}<span class="mv-word" data-start="${w.start.toFixed(3)}" data-end="${l.end.toFixed(3)}" data-word-end="${w.end.toFixed(3)}">${esc(w.text)}</span>`).join('');
+    return `<p class="lyric${karaoke ? ' karaoke' : ''}" data-section="${esc(l.section)}" data-start="${l.start.toFixed(3)}" data-end="${l.end.toFixed(3)}">${words}</p>`;
   });
   return rows.join('\n') + '\n';
 }
@@ -352,11 +355,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     if (f === 'lrc') write(toLrc(lyrics));
     else if (f === 'lrc-words') write(toLrc(lyrics, { words: true }));
     else if (f === 'html') write(toHtml(lyrics));
+    else if (f === 'html-karaoke') write(toHtml(lyrics, { karaoke: true }));
     else if (f === 'ass') write(toAss(lyrics, { analysis }));
     else if (f === 'sections') write(JSON.stringify(toSceneSections(lyrics), null, 1) + '\n');
     else throw new Error(`知らない形式: ${f}`);
   } else {
-    console.log('使い方: node src/lyrics.mjs build lyrics.txt --timing aligned.json|song.lrc -o lyrics.json [--analysis analysis.json] [--snap 0.5]\n        node src/lyrics.mjs export lyrics.json --format lrc|lrc-words|ass|html|sections [-o 出力]');
+    console.log('使い方: node src/lyrics.mjs build lyrics.txt --timing aligned.json|song.lrc -o lyrics.json [--analysis analysis.json] [--snap 0.5]\n        node src/lyrics.mjs export lyrics.json --format lrc|lrc-words|ass|html|html-karaoke|sections [-o 出力]');
     process.exit(cmd ? 1 : 0);
   }
 }

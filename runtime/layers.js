@@ -34,7 +34,7 @@ export function parseTime(spec, ctx, relativeTo = null) {
   if ((m = s.match(/^\+\s*([\d.]+)$/)) && relativeTo != null) return relativeTo + Number(m[1]);
   if ((m = s.match(/^(\d+):([\d.]+)$/))) return Number(m[1]) * 60 + Number(m[2]);
   if (/^[\d.]+$/.test(s)) return Number(s);
-  if ((m = s.match(/^bar\s+([\d.]+)$/i))) return gridTime(ctx.analysis.downbeats, Number(m[1]) - 1, 60 / ctx.analysis.tempo * 4);
+  if ((m = s.match(/^bar\s+([\d.]+)$/i))) return gridTime(ctx.analysis.downbeats, Number(m[1]) - 1, 60 / ctx.analysis.tempo * (ctx.analysis.beatsPerBar ?? 4));
   if ((m = s.match(/^beat\s+([\d.]+)$/i))) return gridTime(ctx.analysis.beats, Number(m[1]) - 1, 60 / ctx.analysis.tempo);
   if ((m = s.match(/^([\w-]+)(?:#(\d+))?(\s+end)?$/))) {
     const list = ctx.sections.map((sec, i) => ({ ...sec, i })).filter(sec => sec.name === m[1]);
@@ -106,6 +106,8 @@ export class HtmlLayers {
       }
       for (const el of doc.querySelectorAll('[style*="url("]')) el.setAttribute('style', await inlineCssUrls(el.getAttribute('style'), url));
       for (const el of doc.querySelectorAll('[data-split]')) splitText(el, el.dataset.split);
+      // カラオケ（.karaoke）の単語は、色の変わる部分を重ねて描くために文字を data-text に写しておく
+      for (const el of doc.querySelectorAll('.karaoke [data-start]')) if (!el.dataset.text) el.dataset.text = el.textContent;
       const root = document.createElement('div');
       root.dataset.layer = def.place ?? 'front';
       root.append(...doc.body.childNodes);
@@ -114,7 +116,10 @@ export class HtmlLayers {
       const timed = [...root.querySelectorAll('[data-start], [data-end]')].map(el => {
         const start = parseTime(el.dataset.start, ctx) ?? 0;
         const end = parseTime(el.dataset.end, ctx, start) ?? Infinity;
-        return { el, start, end };
+        // data-keep: 時刻の外でも消さずに出しておく（"before" / "after" / 空か "both"）。data-out: 終わってからも N 秒出しておく（消えるアニメーション用）
+        const keep = el.dataset.keep, out = Number(el.dataset.out) || 0;
+        const keepBefore = keep != null && keep !== 'after', keepAfter = keep != null && keep !== 'before';
+        return { el, start, end, keepBefore, keepAfter, out };
       });
       const all = [...root.querySelectorAll('*')].map(el => ({ el, baseStyle: el.getAttribute('style'), anim: null, origin: 0 }));
       this.layers.push({ def, root, timed, all, place: root.dataset.layer, canvas: null, last: '' });
@@ -147,13 +152,16 @@ export class HtmlLayers {
     for (const l of this.layers) {
       // 1) 元のインライン指定に戻し、時刻に応じた表示/非表示と要素ごとの時間変数を入れる
       for (const a of l.all) { if (a.baseStyle == null) a.el.removeAttribute('style'); else a.el.setAttribute('style', a.baseStyle); }
-      for (const { el, start, end } of l.timed) {
-        const on = t >= start && t < end;
-        el.toggleAttribute('data-mv-hidden', !on);
-        if (on) {
+      for (const { el, start, end, keepBefore, keepAfter, out } of l.timed) {
+        // 状態: before（まだ）/ active（出番）/ after（終わった）。CSS から [data-mv-state="after"] のように使える
+        const state = t < start ? 'before' : t < end ? 'active' : 'after';
+        const shown = state === 'active' || (state === 'before' && keepBefore) || (state === 'after' && (keepAfter || t < end + out));
+        el.toggleAttribute('data-mv-hidden', !shown);
+        if (shown) {
+          el.dataset.mvState = state;
           el.style.setProperty('--local-t', +(t - start).toFixed(4));
-          el.style.setProperty('--remain', +(Math.min(end - t, 1e4)).toFixed(4));
-          el.style.setProperty('--progress', Number.isFinite(end) ? +((t - start) / (end - start)).toFixed(4) : 0);
+          el.style.setProperty('--remain', +(Math.max(-1e4, Math.min(end - t, 1e4))).toFixed(4));
+          el.style.setProperty('--progress', Number.isFinite(end) ? +Math.min(1, Math.max(0, (t - start) / (end - start))).toFixed(4) : 0);
         }
       }
       // 2) まとめて読む（読み書きを交互にすると毎回スタイル再計算が走るため）

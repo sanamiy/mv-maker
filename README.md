@@ -155,6 +155,7 @@ HTMLには「何を・いつ出すか」だけ、CSSには「どう見せるか�
 | `--energy` / `--loudness` / `--onset` | セクションの energy / 音量 0〜1 / 音の立ち上がり 0〜1 |
 | `--local-t` / `--remain` / `--progress` | （時刻指定した要素のみ）表示されてからの秒 / 消えるまでの秒 / 0→1 |
 | `[data-section="chorus"]` | 今のセクション名。`[data-section="chorus"] .lyric { ... }` のように使う |
+| `[data-mv-state="after"]` | （時刻指定した要素のみ）`before` / `active` / `after`。`data-keep` / `data-out` と一緒に使う |
 
 ```css
 .lyric { font-size: 44px; scale: calc(1 + var(--beat-pulse) * .1); }
@@ -170,6 +171,25 @@ HTMLには「何を・いつ出すか」だけ、CSSには「どう見せるか�
 | `chars-pop` `chars-fade` `chars-drop` | `data-split="chars"` と組み合わせて1文字ずつ（間隔は `--stagger`） |
 | `fade-out` | `data-end` の `--out-dur`（既定 0.3 秒）前から消える |
 | `beat-pulse` `beat-flash` `beat-sway` `beat-bob` | 拍に合わせて拡大 / 点滅 / 揺れ / 跳ねる（強さは `--amount`） |
+| `exit-fade` `exit-drop` `exit-zoom` `exit-blur` | `data-out` と組み合わせて、終わったあとに消える動き（長さは `--exit-dur`） |
+| `karaoke` | 中の単語（`data-keep` 付き）が、歌った所から `--sung` の色に変わる。まだの所は `--unsung` |
+
+#### 時刻の外でも出しておく（カラオケ・消えるアニメーション）
+
+時刻付きの要素は、ふだん `data-start`〜`data-end` の外では消えます。次の属性で変えられます。
+
+- `data-keep`: 時刻の外でも出しておく（`data-keep="before"` は始まる前だけ、`"after"` は終わった後だけ）
+- `data-out="0.4"`: 終わってから 0.4 秒だけ出しておく（そのあいだに消えるアニメーションを再生する）
+- 出ている要素には `data-mv-state`（`before` / `active` / `after`）が付くので、`[data-mv-state="after"] { ... }` で見た目を変えられる。`--progress` は 0〜1 に収まる
+
+```html
+<!-- 行は最初から全部出しておき、歌った所から色が変わる（node src/lyrics.mjs export lyrics.json --format html-karaoke でも作れる） -->
+<p class="lyric karaoke" data-start="bar 9" data-end="bar 11">
+  <span class="mv-word" data-keep data-start="bar 9" data-end="bar 9.5">夜の</span><span class="mv-word" data-keep data-start="bar 9.5" data-end="bar 11">向こうへ</span>
+</p>
+<!-- 終わったあと 0.5 秒かけて下へ落ちて消える -->
+<p class="lyric pop-in exit-drop" data-start="chorus" data-end="+3.6" data-out="0.5">いま 光の中で</p>
+```
 
 ### カメラのショット・照明・床
 
@@ -186,6 +206,60 @@ HTMLには「何を・いつ出すか」だけ、CSSには「どう見せるか�
 ```
 
 モーションには `"only": ["chorus"]` / `"except": ["pre-chorus"]` を書くと、そのセクションだけ（以外だけ）で動きます。
+
+### 細かく決めたいとき
+
+どれも書かなければ今までどおりの見た目になります。
+
+**セクションごとに別々の強さ.** `energy` は動きの大きさ・カメラ・照明・口をまとめて動かします。別にしたいときは次を書きます。
+
+```jsonc
+"sections": [
+  { "from": 15, "name": "chorus", "energy": 1.4, "cameraEnergy": 0.3, "lightEnergy": 1.0,   // ダンスは激しく、カメラは静かに
+    "fade": 0,                                                                              // 前のセクションから混ぜずにすぐ切り替える（既定 0.4 秒）
+    "post": { "saturation": 1.3 } }                                                         // このセクションだけの仕上げ（下の post）
+]
+```
+
+モーションに `"energy": 1` を書くと、そのモーションだけセクションの energy を使わずにこの値で動きます（静かなセクションでも口をしっかり動かす、など）。
+
+**時刻を決めて動かす.** モーションに `from` / `to`（書き方は `data-start` と同じ）を書くと、その時刻のあいだだけ動きます。境目は `fade` 秒（既定 0.2）で混ざり、1回だけ再生する動きは `from` から再生します。`only` / `except` と一緒にも使えます。
+
+```jsonc
+{ "use": "clip", "motion": "cmu_49_02", "from": "bar 14", "to": "+2" }   // 14小節目から2秒だけ
+```
+
+**表情を時刻で足す.** セクションの表情の上に、決めた時刻だけ別の表情を出します。出ているあいだはセクションの表情を弱めます（`"keep": true` で残す）。
+
+```jsonc
+"expressions": [
+  { "at": "bar 12", "dur": 1, "set": { "surprised": 1 } },              // dur の代わりに "until": "bar 13" でも書ける
+  { "at": "chorus#2", "dur": 0.4, "set": { "blinkLeft": 1 }, "keep": true, "fade": 0.08 }
+]
+```
+
+**カメラ.** `orbitSpeed`（回り込みの速さ、既定 0.35）、`shake`（手持ち風の揺れ。数なら揺れの大きさ m、`{ "amount": 0.01, "speed": 1, "beat": 0.03 }` で拍の頭に足す揺れも）、
+`follow`（`true` か `{ "axes": "xz", "smoothing": 0.5 }` で、移動する動きの腰を追う）が書けます。ショットにも同じ項目を書け、`to` では `orbit` / `beatZoom` も動かせます。`ease` は `linear` / `in` / `out` / `inOut`（既定）。
+
+**照明と床.** `"light": { "position": [1, 2, 2], "rimPosition": [-1.5, 2.5, -2], "beatPulse": 0.6 }`（`beatPulse: 0` で拍の明滅なし）、`"floor": { "pulse": 0.6 }`（床の光り方。0 で光らない）。
+
+**キャラの向きと大きさ.** `"character": { "rotation": 30, "scale": 1.2 }`。`rotation` は度で、数1つなら縦軸まわり、`[x, y, z]` でそれぞれ。
+
+**画面全体の仕上げ（post）.** キャラも文字も描き終わった画面にかけます。セクションの `post` で区間ごとに変えられ、境目は混ざります。
+
+```jsonc
+"post": {
+  "brightness": 0, "contrast": 1.1, "saturation": 1.2,   // 明るさ（-1〜1） / コントラスト / 彩度（0 で白黒）
+  "tint": "#ffd0e0", "tintAmount": 0.3,                   // 色をかける
+  "vignette": 0.5,                                        // 周りを暗く（0〜1）
+  "aberration": 0, "aberrationBeat": 6,                   // 色ずれ（px）。aberrationBeat は拍の頭で足す量
+  "grain": 0.04,                                          // フィルムの粒子
+  "flash": 0.15                                           // 拍の頭で白く光る
+}
+```
+
+**拍子.** 解析は4拍子が前提です。3拍子や 6/8 の曲は `node src/analyze.mjs song.wav analysis.json --beats-per-bar 3`（`new-song.mjs` にも `--beats-per-bar`）で解析するか、
+scene.json に `"beatsPerBar": 3` を書きます（`"firstDownbeat": 2` で何拍目が最初の小節頭かも決められる）。`bar 9` などの時刻と `--bar` もこれに従います。
 
 ### open-vrma の動きを使う
 
@@ -284,6 +358,7 @@ SVG の foreignObject 経由で画像にして canvas に描いています。�
 - 外部URLの読み込みはできません（画像・フォントは手元のファイルを指定する。読み込み時に埋め込まれます）
 - `@font-face` で大きな日本語フォントを使うと、毎フレームの描画が少し重くなります。PCに入っているフォントは名前で指定するだけで使えます
 - `transition` は使えません（時刻で決まる `animation` か、CSS変数の `calc()` で書いてください）
+- レイヤーは1枚ずつ画像にしてから重ねるので、`mix-blend-mode` や `backdrop-filter` はキャラや別のレイヤーには効きません。画面全体の色やエフェクトは scene.json の `post` で書きます
 
 ## 構成
 

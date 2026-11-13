@@ -1,6 +1,6 @@
 // 音声を事前解析して analysis.json を作る。
 // 出力: tempo / beats / downbeats / onsets / 100Hz の音量・オンセット包絡 / 盛り上がり区間
-// 使い方: node src/analyze.mjs song.wav analysis.json
+// 使い方: node src/analyze.mjs song.wav analysis.json [--beats-per-bar 3]（拍子。既定 4）
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 
@@ -35,7 +35,7 @@ function fft(re, im) {
 const normalize = a => { const m = Math.max(1e-9, ...a); return a.map(v => v / m); };
 const round = (v, d = 3) => Math.round(v * 10 ** d) / 10 ** d;
 
-export function analyze(x) {
+export function analyze(x, { beatsPerBar = 4 } = {}) {
   const frames = Math.max(1, Math.floor((x.length - WIN) / HOP) + 1);
   const hann = Float32Array.from({ length: WIN }, (_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / WIN));
   const rms = new Float32Array(frames), flux = new Float32Array(frames), lowFlux = new Float32Array(frames);
@@ -96,10 +96,11 @@ export function analyze(x) {
   }
   // 曲頭の拍がグリッド探索の範囲外で落ちることがあるので、0秒付近まで前に伸ばす
   while (beats.length && beats[0] - lag * hopT > -0.08) beats.unshift(round(Math.max(0, beats[0] - lag * hopT)));
-  // 小節頭: 4拍周期のうちオンセットと低域が最も強い位相
+  // 小節頭: beatsPerBar 拍周期のうちオンセットと低域が最も強い位相
+  const N = beatsPerBar;
   let dbPhase = 0; best = -1;
-  for (let p = 0; p < 4; p++) { let s = 0; for (let i = p; i < beats.length; i += 4) { const f = Math.max(0, Math.round((beats[i] - T0) / hopT)); s += low[f] + broad[f]; }; if (s > best) { best = s; dbPhase = p; } }
-  const downbeats = beats.filter((_, i) => i % 4 === dbPhase);
+  for (let p = 0; p < N; p++) { let s = 0; for (let i = p; i < beats.length; i += N) { const f = Math.max(0, Math.round((beats[i] - T0) / hopT)); s += low[f] + broad[f]; }; if (s > best) { best = s; dbPhase = p; } }
+  const downbeats = beats.filter((_, i) => i % N === dbPhase);
   // オンセット（ピーク検出）
   const onN = normalize(Array.from(broad)), onsets = [];
   for (let f = 1; f < frames - 1; f++) if (onN[f] > 0.15 && onN[f] >= onN[f - 1] && onN[f] > onN[f + 1] && (!onsets.length || f * hopT + T0 - onsets.at(-1) > 0.05)) onsets.push(round(f * hopT + T0));
@@ -118,12 +119,14 @@ export function analyze(x) {
     const lv = level(barE[i]), last = segments.at(-1);
     if (last && last.level === lv) last.end = round(b); else segments.push({ start: round(a), end: round(b), level: lv });
   });
-  return { version: 1, duration: round(duration), tempo: round(tempo, 2), beats, downbeats, onsets, segments, envelope: { rate: ENV_RATE, loudness: loud, onset } };
+  return { version: 1, duration: round(duration), tempo: round(tempo, 2), ...(N !== 4 ? { beatsPerBar: N } : {}), beats, downbeats, onsets, segments, envelope: { rate: ENV_RATE, loudness: loud, onset } };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const [, , input, output = 'analysis.json'] = process.argv;
-  const a = analyze(decode(input));
+  const argv = process.argv.slice(2), bi = argv.indexOf('--beats-per-bar');
+  const beatsPerBar = bi >= 0 ? Number(argv.splice(bi, 2)[1]) : 4;
+  const [input, output = 'analysis.json'] = argv;
+  const a = analyze(decode(input), { beatsPerBar });
   fs.writeFileSync(output, JSON.stringify(a));
   console.log(`tempo ${a.tempo} BPM, ${a.beats.length} beats, ${a.onsets.length} onsets`);
   console.log(a.segments.map(s => `${s.start}-${s.end}s ${s.level}`).join('\n'));

@@ -151,9 +151,10 @@ export const behaviors = {
   // 胸の前で手拍子（beats: 小節の何拍目で叩くか。0 始まりで既定は 1 と 3 = 2拍目と4拍目）
   clap(vrm, m, o) {
     const w = Math.min(1, m.energy), beats = o.beats ?? [1, 3];
-    const inBar = ((m.beatIndex % 4) + 4) % 4;
+    // 4拍子は今までどおり拍の番号から、ほかの拍子は小節の中の位置から数える
+    const n = m.beatsPerBar ?? 4, inBar = n === 4 ? ((m.beatIndex % 4) + 4) % 4 : m.beatInBar;
     // 叩く拍に向けて閉じ、叩いたら開く
-    const hit = beats.includes(inBar), next = beats.includes((inBar + 1) % 4);
+    const hit = beats.includes(inBar), next = beats.includes((inBar + 1) % n);
     const close = hit ? 1 - smooth(m.beatPhase / 0.45) : next ? smooth((m.beatPhase - 0.55) / 0.45) : 0;
     const inward = (o.width ?? 0.62) * (0.45 + 0.55 * close);
     for (const [s, sign] of [['left', 1], ['right', -1]]) {

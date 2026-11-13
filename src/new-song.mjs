@@ -1,5 +1,5 @@
 // 1曲ぶんの作業フォルダを songs/<名前>/ に作る。曲ごとにフォルダが分かれるので、複数の曲を並行で作れる。
-// 使い方: node src/new-song.mjs <名前> [--audio song.mp3] [--vrm assets/model.vrm] [--title "曲名"] [--credit "Music: ..."] [--dir songs]
+// 使い方: node src/new-song.mjs <名前> [--audio song.mp3] [--vrm assets/model.vrm] [--title "曲名"] [--credit "Music: ..."] [--dir songs] [--beats-per-bar 3]
 // 曲を渡すとフォルダにコピーして解析し、解析結果の盛り上がり区間からセクションの下書きを作る。
 import fs from 'node:fs';
 import path from 'node:path';
@@ -12,6 +12,7 @@ const flag = (name, def) => { const i = args.indexOf(name); if (i < 0) return de
 const audio = flag('--audio');
 const title = flag('--title');
 const credit = flag('--credit', '');
+const beatsPerBar = Number(flag('--beats-per-bar', 4));
 const parent = path.resolve(flag('--dir', path.join(ROOT, 'songs')));
 let vrm = flag('--vrm');
 const [name] = args;
@@ -32,7 +33,7 @@ let audioName = null, analysis = null;
 if (audio) {
   audioName = 'song' + path.extname(audio).toLowerCase();
   fs.copyFileSync(audio, path.join(dir, audioName));
-  analysis = analyze(decode(path.join(dir, audioName)));
+  analysis = analyze(decode(path.join(dir, audioName)), { beatsPerBar });
   fs.writeFileSync(path.join(dir, 'analysis.json'), JSON.stringify(analysis));
 }
 

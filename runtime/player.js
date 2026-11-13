@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
-import { buildSections, musicAt } from './timeline.js';
+import { buildSections, musicAt, applyMeter, windowWeight, applyExpressionCues } from './timeline.js';
 import { behaviors } from './behaviors.js';
 import { HtmlLayers, parseTime } from './layers.js';
 import { loadMixamo, analyzeMotion } from './mixamo.js';
@@ -34,6 +34,30 @@ void main(){
   gl_FragColor = vec4(col, 1.0);
 }`;
 
+// 画面全体の仕上げ（scene.json の post）。キャラも文字も描き終わった画面に、色・ビネット・色ずれ・粒子・拍のフラッシュをかける
+const POST_DEFAULTS = { brightness: 0, contrast: 1, saturation: 1, tint: '#ffffff', tintAmount: 0, vignette: 0, aberration: 0, aberrationBeat: 0, grain: 0, flash: 0 };
+const POST_FRAG = `
+uniform sampler2D map;
+uniform vec2 uRes;
+uniform float uBrightness, uContrast, uSaturation, uTintAmount, uVignette, uAberration, uGrain, uFlash, uSeed;
+uniform vec3 uTint;
+varying vec2 vUv;
+float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + uSeed) * 43758.5453); }
+void main(){
+  vec2 d = vUv - 0.5;
+  vec2 ab = d * uAberration * 2.0 / uRes.x;
+  vec4 c = texture2D(map, vUv);
+  vec3 col = vec3(texture2D(map, vUv + ab).r, c.g, texture2D(map, vUv - ab).b);
+  col = (col - 0.5) * uContrast + 0.5 + uBrightness;
+  float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
+  col = mix(vec3(lum), col, uSaturation);
+  col = mix(col, col * uTint, uTintAmount);
+  col *= mix(1.0, smoothstep(0.85, 0.25, length(d) * 1.15), uVignette);
+  col += uFlash;
+  col += (hash(vUv * uRes) - 0.5) * uGrain;
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+}`;
+
 class Player {
   async load(sceneUrl, opts = {}) {
     const res = u => new URL(u, sceneUrl).href;
@@ -42,7 +66,8 @@ class Player {
     this.width = opts.width ?? S.width ?? 1280;
     this.height = opts.height ?? S.height ?? 720;
     this.fps = S.fps ?? 30;
-    this.analysis = await (await fetch(res(S.analysis))).json();
+    // 拍子（scene.json の beatsPerBar / firstDownbeat）を書いたときは小節頭を作り直す
+    this.analysis = applyMeter(await (await fetch(res(S.analysis))).json(), S);
     this.sections = buildSections(S, this.analysis);
     this.duration = S.duration ?? this.analysis.duration;
     this.frameCount = Math.ceil(this.duration * this.fps);
@@ -56,12 +81,18 @@ class Player {
 
     this.three = new THREE.Scene();
     const cam = S.camera || {};
-    this.camCfg = { position: [0, 1.35, 2.4], target: [0, 1.15, 0], fov: 30, beatZoom: 0.04, orbit: 0.25, ...cam };
+    this.camCfg = { position: [0, 1.35, 2.4], target: [0, 1.15, 0], fov: 30, beatZoom: 0.04, orbit: 0.25, orbitSpeed: 0.35, shake: 0, ...cam };
     this.camera = new THREE.PerspectiveCamera(this.camCfg.fov, this.width / this.height, 0.1, 50);
     // ショット: camera.shots に時刻ごとのカメラを並べると、その時刻で切り替わる（at の書き方は HTML の data-start と同じ）
     const tctx = { analysis: this.analysis, sections: this.sections, duration: this.duration };
     this.shots = (cam.shots || []).map(s => ({ ...s, start: parseTime(s.at, tctx) ?? 0 })).sort((a, b) => a.start - b.start);
     this.shots.forEach((s, k) => { s.end = s.dur != null ? s.start + s.dur : (this.shots[k + 1]?.start ?? this.duration); });
+    // 時刻を決めて足す表情: "expressions": [{ "at": "bar 12", "dur": 1, "set": { "surprised": 1 } }]（until で終わりの時刻も書ける）
+    this.expressionCues = (S.expressions || []).map(c => {
+      const start = parseTime(c.at, tctx) ?? 0;
+      const end = c.until != null ? parseTime(c.until, tctx, start) : start + (c.dur ?? 1);
+      return { ...c, start, end, set: c.set ?? {} };
+    });
 
     // 組み込みのシェーダー背景（scene.background を書いたときだけ）。HTMLで背景を書くなら不要
     this.useShaderBg = !!S.background;
@@ -106,9 +137,25 @@ class Player {
       }
     }
 
+    // 画面全体の仕上げ（"post"、またはセクションの "post" を書いたときだけ）
+    if (S.post || this.sections.some(s => s.post)) {
+      this.postBase = { ...POST_DEFAULTS, ...(S.post || {}) };
+      this.postTex = new THREE.FramebufferTexture(this.width, this.height);
+      this.postU = {
+        map: { value: this.postTex }, uRes: { value: new THREE.Vector2(this.width, this.height) }, uSeed: { value: 0 },
+        uBrightness: { value: 0 }, uContrast: { value: 1 }, uSaturation: { value: 1 }, uTint: { value: new THREE.Color() }, uTintAmount: { value: 0 },
+        uVignette: { value: 0 }, uAberration: { value: 0 }, uGrain: { value: 0 }, uFlash: { value: 0 },
+      };
+      this.postScene = new THREE.Scene();
+      const pm = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({ uniforms: this.postU, vertexShader: BG_VERT, fragmentShader: POST_FRAG, depthWrite: false, depthTest: false }));
+      pm.frustumCulled = false;
+      this.postScene.add(pm);
+    }
+
     // 床（拍で光る円盤）
     // "floor": false で消せる。{ color, glow, radius } で見た目を変えられる
-    const fl = S.floor === false ? null : { color: '#222233', glow: bg.high ?? '#ff4d8d', radius: 1.2, ...(S.floor || {}) };
+    const fl = S.floor === false ? null : { color: '#222233', glow: bg.high ?? '#ff4d8d', radius: 1.2, pulse: 0.6, ...(S.floor || {}) };
+    this.floorPulse = fl?.pulse ?? 0.6;
     this.floorMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(fl?.color ?? '#222233'), emissive: new THREE.Color(fl?.glow ?? '#ff4d8d'), emissiveIntensity: 0, roughness: 0.6 });
     if (fl) {
       const floor = new THREE.Mesh(new THREE.CircleGeometry(fl.radius, 64), this.floorMat);
@@ -117,22 +164,31 @@ class Player {
     }
 
     // 照明: "light": { color, intensity, ambient, rim }。セクションに "light": "#色" を書くとキーライトの色がそこで変わる
-    this.lightCfg = { color: '#ffffff', intensity: 2.2, ambient: 0.6, rim: null, ...(S.light || {}) };
+    // position / rimPosition で向き（原点を照らす方向）を、beatPulse で拍ごとの明滅の強さを変えられる（0 で明滅なし）
+    this.lightCfg = { color: '#ffffff', intensity: 2.2, ambient: 0.6, rim: null, position: [1, 2, 2], rimPosition: [-1.5, 2.5, -2], beatPulse: 0.6, ...(S.light || {}) };
     this.key = new THREE.DirectionalLight(new THREE.Color(this.lightCfg.color), this.lightCfg.intensity);
-    this.key.position.set(1, 2, 2);
+    this.key.position.fromArray(this.lightCfg.position);
     this.ambient = new THREE.AmbientLight(0xffffff, this.lightCfg.ambient);
     this.three.add(this.key, this.ambient);
     if (this.lightCfg.rim) {
       this.rim = new THREE.DirectionalLight(new THREE.Color(this.lightCfg.rim), this.lightCfg.rimIntensity ?? 2.5);
-      this.rim.position.set(-1.5, 2.5, -2);
+      this.rim.position.fromArray(this.lightCfg.rimPosition);
       this.three.add(this.rim);
     }
-    this._ca = new THREE.Color(); this._cb = new THREE.Color();
+    this._ca = new THREE.Color(); this._cb = new THREE.Color(); this._cc = new THREE.Color();
 
     // キャラ
     const ch = S.character || {};
     this.motions = (ch.motions || [{ use: 'idle' }]).map(m => ({ fn: behaviors[m.use], opts: m, state: {} }));
     for (const m of this.motions) if (!m.fn) throw new Error(`unknown motion: ${m.opts.use}`);
+    // "from" / "to"（data-start と同じ書き方）で、その時刻のあいだだけ動かす。境目は fade 秒（既定 0.2）で混ざる
+    for (const m of this.motions) {
+      if (m.opts.from == null && m.opts.to == null) continue;
+      const from = parseTime(m.opts.from, tctx) ?? 0, to = parseTime(m.opts.to, tctx, from) ?? Infinity;
+      m.window = { from, to, fade: m.opts.fade ?? 0.2 };
+      // 1回だけ再生する動きや sync: "time" は from から数える
+      if (m.opts.start == null && m.opts.from != null) m.opts = { ...m.opts, start: from };
+    }
     if (ch.vrm) {
       const loader = new GLTFLoader();
       loader.register(p => new VRMLoaderPlugin(p));
@@ -143,6 +199,10 @@ class Player {
       if (vrm.meta?.metaVersion === '0') VRMUtils.rotateVRM0(vrm);
       vrm.scene.traverse(o => { o.frustumCulled = false; });
       vrm.scene.position.fromArray(ch.position ?? [0, 0, 0]);
+      // rotation: 度。数1つなら縦軸まわり（正面からどれだけ回すか）、[x, y, z] でそれぞれ。scale: 大きさの倍率
+      const rot = ch.rotation == null ? [0, 0, 0] : typeof ch.rotation === 'number' ? [0, ch.rotation, 0] : ch.rotation;
+      vrm.scene.rotation.x += rot[0] * Math.PI / 180; vrm.scene.rotation.y += rot[1] * Math.PI / 180; vrm.scene.rotation.z += rot[2] * Math.PI / 180;
+      if (ch.scale != null) vrm.scene.scale.setScalar(ch.scale);
       if (vrm.lookAt) vrm.lookAt.target = this.camera;
       this.three.add(vrm.scene);
       this.vrm = vrm;
@@ -202,6 +262,7 @@ class Player {
     this.next++;
     const dt = 1 / this.fps, t = i * dt, jumped = this.jumped;
     const m = musicAt(t, this.analysis, this.sections);
+    if (this.expressionCues.length) m.expression = applyExpressionCues(m.expression, this.expressionCues, t);
     const vrm = this.vrm;
     if (vrm) {
       vrm.humanoid.resetNormalizedPose();
@@ -210,23 +271,52 @@ class Player {
         em.resetValues();
         for (const [k, v] of Object.entries(m.expression)) if (em.getExpression(k)) em.setValue(k, v);
       }
-      for (const { fn, opts, state } of this.motions) {
-        // "only": ["chorus"] / "except": [...] でセクションを絞れる（境目は energy を混ぜてなめらかに）
-        if (!opts.only && !opts.except) { fn(vrm, m, opts, state); continue; }
-        const on = s => !!s && (opts.only ? opts.only.includes(s.name) : !opts.except.includes(s.name));
-        const cur = this.sections[m.sectionIndex], prev = this.sections[m.sectionIndex - 1] ?? cur;
-        const w = (on(prev) ? 1 : 0) * (1 - m.sectionBlend) + (on(cur) ? 1 : 0) * m.sectionBlend;
-        if (w > 0) fn(vrm, { ...m, energy: m.energy * w, weight: w }, opts, state);
+      for (const { fn, opts, state, window: win } of this.motions) {
+        // "energy": 数 で、セクションの energy の代わりにこの値を使う（mouth を静かなセクションでも大きく、など）
+        const energy = opts.energy ?? m.energy;
+        // "only": ["chorus"] / "except": [...] でセクションを絞れる（境目は energy を混ぜてなめらかに）。from / to で時刻も絞れる
+        if (!opts.only && !opts.except && !win) { fn(vrm, opts.energy == null ? m : { ...m, energy }, opts, state); continue; }
+        let w = 1;
+        if (opts.only || opts.except) {
+          const on = s => !!s && (opts.only ? opts.only.includes(s.name) : !opts.except.includes(s.name));
+          const cur = this.sections[m.sectionIndex], prev = this.sections[m.sectionIndex - 1] ?? cur;
+          w = (on(prev) ? 1 : 0) * (1 - m.sectionBlend) + (on(cur) ? 1 : 0) * m.sectionBlend;
+        }
+        if (win) w *= windowWeight(t, win.from, win.to, win.fade);
+        if (w > 0) fn(vrm, { ...m, energy: energy * w, weight: w }, opts, state);
       }
       if (this.smoothing > 0) this.smoothPose(i === 0 || this.jumped ? 1 : 1 - Math.exp(-dt / this.smoothing));
       this.jumped = false;
       vrm.update(i === 0 ? 0 : dt);
     }
-    // カメラ: 拍でわずかに寄り、盛り上がるとゆっくり回り込む
+    // カメラ: 拍でわずかに寄り、盛り上がるとゆっくり回り込む（強さはセクションの cameraEnergy、無ければ energy）
+    const ce = m.cameraEnergy ?? m.energy;
     const c = this.shotAt(t), target = new THREE.Vector3(...c.target);
     const off = new THREE.Vector3(...c.position).sub(target);
-    off.applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.sin(t * 0.35) * c.orbit * Math.max(0, m.energy - 0.5));
-    off.multiplyScalar(1 - c.beatZoom * m.beatPulse * m.energy);
+    off.applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.sin(t * c.orbitSpeed) * c.orbit * Math.max(0, ce - 0.5));
+    off.multiplyScalar(1 - c.beatZoom * m.beatPulse * ce);
+    // follow: キャラの腰を追う（"follow": true か { "axes": "xz", "smoothing": 0.5 }）
+    if (c.follow && this.vrm) {
+      const f = c.follow === true ? {} : c.follow, axes = f.axes ?? 'xz';
+      const hips = this.vrm.humanoid.getNormalizedBoneNode('hips');
+      const p = hips ? hips.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3();
+      this.followRest ??= p.clone();
+      const d = p.sub(this.followRest);
+      if (!axes.includes('x')) d.x = 0; if (!axes.includes('y')) d.y = 0; if (!axes.includes('z')) d.z = 0;
+      const sm = f.smoothing ?? 0.5;
+      if (!this.followPos || i === 0 || jumped || !(sm > 0)) this.followPos = d.clone();
+      else this.followPos.lerp(d, 1 - Math.exp(-dt / sm));
+      target.add(this.followPos);
+    }
+    // shake: 手持ちカメラ風の揺れ（決定的）。数（揺れの大きさ m）か { amount, speed, beat }（beat: 拍の頭で足す揺れ）
+    const sh = typeof c.shake === 'number' ? { amount: c.shake } : (c.shake || {});
+    const shAmt = (sh.amount ?? 0) + (sh.beat ?? 0) * m.beatPulse;
+    if (shAmt > 0) {
+      const sp = sh.speed ?? 1, n = (a, b, ph) => Math.sin(t * a * sp + ph) * 0.6 + Math.sin(t * b * sp + ph * 1.7) * 0.4;
+      const j = new THREE.Vector3(n(1.3, 3.1, 0.2), n(1.1, 2.7, 1.4), n(0.9, 2.3, 2.9)).multiplyScalar(shAmt);
+      target.add(j.clone().multiplyScalar(0.5));
+      off.add(j);
+    }
     this.camera.position.copy(target).add(off);
     this.camera.lookAt(target);
     if (c.roll) this.camera.rotateZ(c.roll * Math.PI / 180);
@@ -236,8 +326,11 @@ class Player {
     this.bgUniforms.uBeat.value = m.beatPos;
     this.bgUniforms.uPulse.value = m.beatPulse;
     this.bgUniforms.uEnergy.value = m.energy;
-    this.floorMat.emissiveIntensity = m.beatPulse * 0.6 * m.energy;
-    this.key.intensity = this.lightCfg.intensity - 0.2 + m.beatPulse * 0.6 * m.energy;
+    const le = m.lightEnergy ?? m.energy;
+    this.floorMat.emissiveIntensity = m.beatPulse * this.floorPulse * le;
+    // 明滅なし（beatPulse: 0）のときは intensity をそのまま使う
+    const bp = this.lightCfg.beatPulse;
+    this.key.intensity = this.lightCfg.intensity - (bp ? 0.2 * bp / 0.6 : 0) + m.beatPulse * bp * le;
     const cur = this.sections[m.sectionIndex], prev = this.sections[m.sectionIndex - 1] ?? cur;
     this._ca.set(prev?.light ?? this.lightCfg.color); this._cb.set(cur?.light ?? this.lightCfg.color);
     this.key.color.copy(this._ca).lerp(this._cb, m.sectionBlend ?? 1);
@@ -261,7 +354,24 @@ class Player {
     this.renderer.clearDepth();
     this.renderer.render(this.three, this.camera);
     if (this.overlay) this.renderer.render(this.overlay.front, this.bgCamera);
+    if (this.postScene) this.applyPost(i, m);
     return m;
+  }
+
+  // 描き終わった画面を写し取り、post の設定で仕上げて描き直す。セクションの post は境目で混ざる
+  applyPost(i, m) {
+    const cur = this.sections[m.sectionIndex], prev = this.sections[m.sectionIndex - 1] ?? cur;
+    const a = { ...this.postBase, ...(prev?.post || {}) }, b = { ...this.postBase, ...(cur?.post || {}) }, k = m.sectionBlend ?? 1;
+    const mix = key => a[key] + (b[key] - a[key]) * k;
+    const U = this.postU;
+    U.uBrightness.value = mix('brightness'); U.uContrast.value = mix('contrast'); U.uSaturation.value = mix('saturation');
+    U.uTint.value.set(a.tint).lerp(this._cc.set(b.tint), k); U.uTintAmount.value = mix('tintAmount');
+    U.uVignette.value = mix('vignette'); U.uGrain.value = mix('grain');
+    U.uAberration.value = mix('aberration') + mix('aberrationBeat') * m.beatPulse;
+    U.uFlash.value = mix('flash') * m.beatPulse;
+    U.uSeed.value = (i % 997) * 0.618;
+    this.renderer.copyFramebufferToTexture(this.postTex);
+    this.renderer.render(this.postScene, this.bgCamera);
   }
 
   // 前フレームの姿勢から今の目標姿勢へ a の割合だけ近づける（a=1 でそのまま）
@@ -281,9 +391,9 @@ class Player {
     const s = this.shots[k], a = { ...base, roll: 0, ...s };
     if (!s.to) return a;
     const p = Math.min(1, Math.max(0, (t - s.start) / (s.end - s.start)));
-    const e = s.ease === 'linear' ? p : s.ease === 'out' ? 1 - (1 - p) ** 3 : p * p * (3 - 2 * p);
+    const e = s.ease === 'linear' ? p : s.ease === 'out' ? 1 - (1 - p) ** 3 : s.ease === 'in' ? p ** 3 : p * p * (3 - 2 * p);
     const lerp = (x, y) => (Array.isArray(x) ? x.map((v, i) => v + (y[i] - v) * e) : x + (y - x) * e);
-    for (const key of ['position', 'target', 'fov', 'roll']) if (s.to[key] != null) a[key] = lerp(a[key], s.to[key]);
+    for (const key of ['position', 'target', 'fov', 'roll', 'orbit', 'beatZoom']) if (s.to[key] != null) a[key] = lerp(a[key], s.to[key]);
     return a;
   }
 
@@ -293,7 +403,7 @@ class Player {
   async replayHtml(i) {
     const frames = new Set();
     const add = x => { if (Number.isFinite(x)) for (const f of [Math.floor(x * this.fps), Math.ceil(x * this.fps)]) if (f >= 0 && f < i) frames.add(f); };
-    for (const l of this.html.layers) for (const { start, end } of l.timed) { add(start); add(end); }
+    for (const l of this.html.layers) for (const { start, end, out } of l.timed) { add(start); add(end); if (out) add(end + out); }
     for (const s of this.sections) add(s.from);
     this.html.reset();
     for (const f of [...frames].sort((a, b) => a - b)) await this.html.update(musicAt(f / this.fps, this.analysis, this.sections), false);

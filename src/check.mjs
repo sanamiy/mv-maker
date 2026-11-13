@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildSections } from '../runtime/timeline.js';
+import { buildSections, applyMeter } from '../runtime/timeline.js';
 import { parseTime } from '../runtime/layers.js';
 import { tempoFit } from '../runtime/library.js';
 import { openLibrary } from './motions.mjs';
@@ -38,7 +38,7 @@ for (const s of scene.styles ?? []) if (!exists(s)) errors.push(`CSS が見つ�
 
 let analysis = null;
 if (!scene.analysis || !exists(scene.analysis)) errors.push(`analysis.json がありません（node src/analyze.mjs ${scene.audio} ${scene.analysis ?? 'analysis.json'}）`);
-else analysis = JSON.parse(fs.readFileSync(at(scene.analysis), 'utf8'));
+else analysis = applyMeter(JSON.parse(fs.readFileSync(at(scene.analysis), 'utf8')), scene);
 
 const audioInfo = scene.audio && exists(scene.audio) ? probe(at(scene.audio)) : null;
 const audioDur = audioInfo ? Number(audioInfo.format.duration) : null;
@@ -122,6 +122,19 @@ if (analysis) {
     for (let i = 1; i < list.length; i++) if (list[i].start < list[i - 1].end - 0.05) warnings.push(`.${c} が重なっています: 「${list[i - 1].label}」(〜${list[i - 1].end.toFixed(2)}s) と「${list[i].label}」(${list[i].start.toFixed(2)}s〜)`);
   }
   notes.push(`時刻付きの文字・図: ${timed.length} 個`);
+
+  // scene.json の中の時刻（カメラのショット・表情・動きの from / to）
+  const tryTime = (spec, where, rel) => { try { return parseTime(spec, ctx, rel); } catch (e) { errors.push(`${where} の時刻を読めません: ${e.message}`); return null; } };
+  for (const [k, s] of (scene.camera?.shots ?? []).entries()) tryTime(s.at, `camera.shots[${k}]`);
+  for (const [k, c] of (scene.expressions ?? []).entries()) {
+    const st = tryTime(c.at, `expressions[${k}]`);
+    if (c.until != null) tryTime(c.until, `expressions[${k}].until`, st);
+    if (!c.set || !Object.keys(c.set).length) warnings.push(`expressions[${k}] に set（表情名と強さ）がありません`);
+  }
+  for (const [k, mo] of (scene.character?.motions ?? []).entries()) {
+    const st = mo.from != null ? tryTime(mo.from, `motions[${k}].from`) : 0;
+    if (mo.to != null) { const en = tryTime(mo.to, `motions[${k}].to`, st); if (en != null && st != null && en <= st) errors.push(`motions[${k}] の to が from より前です`); }
+  }
 }
 
 // ---- 書き出した動画 ----

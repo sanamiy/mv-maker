@@ -11,6 +11,7 @@
 //   --snap 0.5        行の頭を 8 分の拍に寄せる（0.1 秒以内のときだけ）
 //   --vrm <パス>      scene.json に書くキャラ
 //   --no-check        確認動画（check.mp4）を作らない
+//   --karaoke         lyrics.html をカラオケ形式にする（行を最初から出し、歌った所から色が変わる）
 //
 // 出力（my-mv/ の中）:
 //   song.<拡張子>   音源のコピー
@@ -46,7 +47,7 @@ const LYRICS_CSS = `.lyric {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2), pos = [], opt = {};
 for (let i = 0; i < argv.length; i++) {
-  if (argv[i] === '--separate' || argv[i] === '--no-check') opt[argv[i].slice(2)] = true;
+  if (argv[i] === '--separate' || argv[i] === '--no-check' || argv[i] === '--karaoke') opt[argv[i].slice(2)] = true;
   else if (argv[i].startsWith('-')) opt[argv[i].replace(/^-+/, '')] = argv[++i];
   else pos.push(argv[i]);
 }
@@ -102,7 +103,7 @@ if (lyricsIn) {
     fs.writeFileSync(at('lyrics.json'), JSON.stringify(lyrics, null, 1) + '\n');
     // 手直し用の LRC は、自動合わせの結果から作るときだけ書く（手で打った LRC を上書きしない）
     if (path.resolve(timingFile) !== at('lyrics.lrc')) fs.writeFileSync(at('lyrics.lrc'), toLrc(lyrics));
-    fs.writeFileSync(at('lyrics.html'), toHtml(lyrics));
+    fs.writeFileSync(at('lyrics.html'), toHtml(lyrics, { karaoke: !!opt.karaoke }));
     const { coverage, guessedWords, totalWords } = built.report;
     console.log(`${lyrics.lines.length} 行, 文字の一致率 ${(coverage * 100).toFixed(1)}%, 推定で埋めた単語 ${guessedWords}/${totalWords}`);
     for (const s of lyrics.sections) console.log(`  ${s.from.toFixed(2).padStart(7)}s  ${s.label || s.name}`);
