@@ -88,7 +88,7 @@ node src/prepare.mjs song.mp3 lyrics.txt -o my-mv/ --timing my-mv/lyrics.lrc
 
 ```sh
 node src/lyrics.mjs build lyrics.txt --timing aligned.json|song.lrc -o lyrics.json [--analysis analysis.json] [--snap 0.5]
-node src/lyrics.mjs export lyrics.json --format lrc|lrc-words|html|ass|sections
+node src/lyrics.mjs export lyrics.json --format lrc|lrc-words|html|html-karaoke|ass|sections
 node src/sync-check.mjs song.mp3 analysis.json [lyrics.json] check.mp4 [--from 30 --to 60]
 .venv/bin/python tools/align_lyrics.py song.mp3 lyrics.txt aligned.json [--separate]
 ```
@@ -110,6 +110,7 @@ node src/sync-check.mjs song.mp3 analysis.json [lyrics.json] check.mp4 [--from 3
 - 行（`.lyric`）は歌っている間だけ表示されます。
 - 単語（`.mv-word`）は歌われた瞬間に現れ、行の終わりまで残ります（本来の単語の終わりは `data-word-end`）。
 - 表示中の要素には `--local-t`（表示からの秒）/ `--remain` / `--progress`（0→1）が入るので、CSS の animation で出方を書けます。
+- カラオケのように行を最初から全部出して、歌った所から色を変えたいときは `--format html-karaoke` で書き出します。単語に `data-keep` が付き、`runtime/mv.css` の `.karaoke` で `--sung` / `--unsung` の色に塗り分けられます（README「時刻の外でも出しておく」）。
 - 見た目を変えたいときは HTML ではなく CSS を書きます。HTML は作り直しても上書きされるので手で直さないでください。
 
 スクリプトから時刻で歌詞を引きたいときは `runtime/lyrics.js` を使います。

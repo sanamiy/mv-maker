@@ -25,6 +25,25 @@
 .beat-sway  { rotate: calc(sin(var(--beat) * 3.14159 * 1rad) * var(--amount, 4) * 1deg); }
 .beat-bob   { translate: 0 calc(var(--beat-pulse) * var(--amount, -12) * 1px); }
 
+/* ---- 消えるアニメーション（data-out="0.4" で終わってからも 0.4 秒出しておき、そのあいだに再生される） ---- */
+.exit-fade[data-mv-state="after"] { animation: mv-exit-fade var(--exit-dur, .4s) ease-in both; }
+.exit-drop[data-mv-state="after"] { animation: mv-exit-drop var(--exit-dur, .4s) ease-in both; }
+.exit-zoom[data-mv-state="after"] { animation: mv-exit-zoom var(--exit-dur, .4s) ease-in both; }
+.exit-blur[data-mv-state="after"] { animation: mv-exit-blur var(--exit-dur, .4s) ease-in both; }
+
+/* ---- カラオケ（lyrics.mjs の html-karaoke。単語に data-keep が付き、歌った所から --sung の色になる） ---- */
+.karaoke .mv-word { position: relative; color: var(--unsung, rgba(255, 255, 255, .45)); }
+.karaoke .mv-word[data-mv-state="after"] { color: var(--sung, #ffd84d); }
+/* 歌っている単語は、同じ文字（data-text。無ければ自動で入る）を --sung の色で重ね、進んだ分だけ見せる */
+.karaoke .mv-word[data-mv-state="active"]::after {
+  content: attr(data-text); position: absolute; left: 0; top: 0; color: var(--sung, #ffd84d);
+  clip-path: inset(-50% calc((1 - var(--progress)) * 100%) -50% -50%);
+}
+
+@keyframes mv-exit-fade { to { opacity: 0; } }
+@keyframes mv-exit-drop { to { opacity: 0; transform: translateY(40px); } }
+@keyframes mv-exit-zoom { to { opacity: 0; transform: scale(1.6); } }
+@keyframes mv-exit-blur { to { opacity: 0; filter: blur(16px); } }
 @keyframes mv-fade-in  { from { opacity: 0; } }
 @keyframes mv-pop-in   { from { opacity: 0; transform: scale(.3); } }
 @keyframes mv-slide-up { from { opacity: 0; transform: translateY(40px); } }

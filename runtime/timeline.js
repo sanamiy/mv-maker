@@ -55,10 +55,27 @@ function steadyGrid(analysis, period) {
   return fit;
 }
 
+// セクションごとに混ぜる値。energy に加えて、カメラ（cameraEnergy）と照明（lightEnergy）を別に決められる（書かなければ energy と同じ）
+const lerp = (a, b, k) => a + (b - a) * k;
+const secEnergy = (s, key) => s[key] ?? s.energy ?? 1;
+
+// 拍子。analysis.beatsPerBar（analyze.mjs --beats-per-bar）か、scene.json の beatsPerBar。既定は 4
+export const beatsPerBar = analysis => analysis?.beatsPerBar ?? 4;
+
+// scene.json の beatsPerBar / firstDownbeat（何拍目が最初の小節頭か、1 始まり）で小節頭を作り直す。
+// どちらも書いていなければ analysis をそのまま返す
+export function applyMeter(analysis, scene = {}) {
+  if (scene.beatsPerBar == null && scene.firstDownbeat == null) return analysis;
+  const n = scene.beatsPerBar ?? beatsPerBar(analysis);
+  let first = scene.firstDownbeat != null ? scene.firstDownbeat - 1 : Math.max(0, analysis.beats.indexOf(analysis.downbeats?.[0]));
+  first = ((first % n) + n) % n;
+  return { ...analysis, beatsPerBar: n, downbeats: analysis.beats.filter((_, i) => i >= first && (i - first) % n === 0) };
+}
+
 export function musicAt(t, analysis, sections, fade = 0.4) {
-  const period = 60 / (analysis.tempo || 120);
+  const period = 60 / (analysis.tempo || 120), bpb = beatsPerBar(analysis);
   const beatPos = gridPosition(analysis.beats, t, period);
-  const barPos = gridPosition(analysis.downbeats, t, period * 4);
+  const barPos = gridPosition(analysis.downbeats, t, period * bpb);
   const beatIndex = Math.floor(beatPos), beatPhase = beatPos - beatIndex;
   const barIndex = Math.floor(barPos), barPhase = barPos - barIndex;
   const { rate, loudness, onset } = analysis.envelope;
@@ -66,15 +83,19 @@ export function musicAt(t, analysis, sections, fade = 0.4) {
   const si = Math.max(0, floorIndex(sections.map(s => s.from), t));
   const cur = sections[si] || { energy: 1, expression: {} };
   const prev = sections[si - 1] || cur;
-  const blend = smoothstep((t - (cur.from ?? 0)) / fade);
-  const energy = (prev.energy ?? 1) + ((cur.energy ?? 1) - (prev.energy ?? 1)) * blend;
+  // 境目で混ざる秒数は、入ってくるセクションの fade（既定 0.4 秒）。0 ならすぐ切り替わる
+  const f = cur.fade ?? fade;
+  const blend = f > 0 ? smoothstep((t - (cur.from ?? 0)) / f) : (t >= (cur.from ?? 0) ? 1 : 0);
+  const energy = lerp(prev.energy ?? 1, cur.energy ?? 1, blend);
   const expression = {};
   for (const k of new Set([...Object.keys(prev.expression || {}), ...Object.keys(cur.expression || {})])) {
     const a = prev.expression?.[k] ?? 0, b = cur.expression?.[k] ?? 0;
     expression[k] = a + (b - a) * blend;
   }
   return {
-    t, beatPos, beatIndex, beatPhase, barPos, barIndex, barPhase,
+    t, beatPos, beatIndex, beatPhase, barPos, barIndex, barPhase, beatsPerBar: bpb,
+    // 小節の中で何拍目か（0 始まり）
+    beatInBar: Math.min(bpb - 1, Math.floor(barPhase * bpb + 1e-3)),
     // 揺れない拍の時計（Mixamo の再生など、速さが変わると困るもの用）と1拍の秒数
     steadyBeat: (t - steadyGrid(analysis, period).t0) / steadyGrid(analysis, period).period, beatPeriod: steadyGrid(analysis, period).period,
     // 拍の頭で1、すぐ減衰するパルス
@@ -82,5 +103,29 @@ export function musicAt(t, analysis, sections, fade = 0.4) {
     loudness: sampleEnvelope(loudness, rate, t),
     onset: sampleEnvelope(onset, rate, t),
     section: cur.name, sectionIndex: si, sectionBlend: blend, energy, expression,
+    cameraEnergy: lerp(secEnergy(prev, 'cameraEnergy'), secEnergy(cur, 'cameraEnergy'), blend),
+    lightEnergy: lerp(secEnergy(prev, 'lightEnergy'), secEnergy(cur, 'lightEnergy'), blend),
   };
+}
+
+// 前後 fade 秒でなめらかに 0→1→0 になる窓（from〜to の間が 1）
+export function windowWeight(t, from, to, fade = 0) {
+  if (t < from || t >= to) return 0;
+  if (!(fade > 0)) return 1;
+  return Math.min(smoothstep((t - from) / fade), Number.isFinite(to) ? smoothstep((to - t) / fade) : 1);
+}
+
+// 時刻を決めて表情を足す（scene.json の expressions）。
+// cues: [{ start, end, set: { 表情名: 強さ }, fade, keep }]（start / end は秒に直したもの）
+// 出ているあいだ set の表情へ寄せ、keep: true でなければ、ほかの表情（セクションの表情）は弱める
+export function applyExpressionCues(expression, cues, t) {
+  let out = expression;
+  for (const c of cues) {
+    const w = windowWeight(t, c.start, c.end, c.fade ?? 0.12);
+    if (w <= 0) continue;
+    if (out === expression) out = { ...expression };
+    if (!c.keep) for (const k of Object.keys(out)) if (!(k in c.set)) out[k] *= 1 - w;
+    for (const [k, v] of Object.entries(c.set)) out[k] = lerp(out[k] ?? 0, v, w);
+  }
+  return out;
 }
